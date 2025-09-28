@@ -28,6 +28,7 @@
 .d-desktop-none { @include desktop { display: none !important; } }
 
 .navbar {
+  background-color: var(--bg-primary);
   border-bottom: 1px solid var(--border-color);
   position: sticky;
   top: 0;
@@ -199,6 +200,14 @@
     display: flex;
     align-items: center;
 
+    @include xs {
+      display: none;
+    }
+
+    @include sm {
+      display: none;
+    }
+
     &-trigger {
       display: flex;
       align-items: center;
@@ -210,6 +219,26 @@
       cursor: pointer;
       color: var(--text-primary);
       transition: all $transition-fast;
+
+      .navbar__hamburger {
+        margin-right: $spacing-xs;
+        display: none;
+      }
+
+      .navbar__avatar--desktop {
+        display: block;
+      }
+
+      .navbar__username--desktop {
+        display: inline-flex;
+        align-items: center;
+      }
+
+      .navbar__account-caret {
+        width: 14px;
+        height: 14px;
+        display: inline-flex;
+      }
 
       svg {
         width: 16px;
@@ -227,6 +256,40 @@
 
       &:hover {
         background-color: var(--bg-secondary);
+      }
+
+      @include md {
+        border-color: var(--border-color);
+
+        .navbar__hamburger {
+          display: flex;
+        }
+
+        .navbar__avatar--desktop,
+        .navbar__username--desktop,
+        .navbar__account-caret {
+          display: none;
+        }
+      }
+
+      @include lg-up {
+        border-color: transparent;
+
+        .navbar__hamburger {
+          display: none;
+        }
+
+        .navbar__avatar--desktop {
+          display: block;
+        }
+
+        .navbar__username--desktop {
+          display: inline-flex;
+        }
+
+        .navbar__account-caret {
+          display: inline-flex;
+        }
       }
     }
 
@@ -302,14 +365,14 @@
       display: none;
     }
     
-    // Medium tablets - show with smaller gap
+    // Medium tablets - hide, use compact toggles
     @include md {
-      display: flex;
-      gap: $spacing-sm;
+      display: none;
     }
     
     // Large laptops - normal gap
     @include lg {
+      display: flex;
       gap: $spacing-md;
     }
     
@@ -787,6 +850,37 @@
     // Extra extra large - extra large font
     @include xxl {
       font-size: 1rem;
+    }
+
+    &--desktop {
+      display: none;
+
+      @include lg-up {
+        display: inline-flex;
+        align-items: center;
+      }
+    }
+
+    &--mobile {
+      @include xs {
+        display: block;
+        font-size: 0.85rem;
+      }
+
+      @include sm {
+        display: block;
+        font-size: 0.9rem;
+      }
+    }
+  }
+
+  &__account-caret {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    @include md {
+      display: none;
     }
   }
   

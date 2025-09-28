@@ -125,7 +125,7 @@ function Navbar() {
         {!loading && user && (
           <>
             {/* Full navigation for desktop */}
-            <div className="navbar__nav navbar__nav--full d-xxl-flex d-xl-flex d-lg-flex">
+            <div className="navbar__nav navbar__nav--full">
               {navLinks.map(({ label, to }) => (
                 <Link
                   key={to}
@@ -193,18 +193,24 @@ function Navbar() {
             </div>
 
             {/* Compact dropdown for medium widths */}
-            <div className="navbar__compact d-md-flex d-lg-none" ref={compactMenuRef}>
+            <div className="navbar__compact" ref={compactMenuRef}>
               <button
                 className={`navbar__compact-trigger ${
                   isNavCompactOpen ? "navbar__compact-trigger--open" : ""
                 }`}
                 onClick={toggleNavCompact}
                 aria-expanded={isNavCompactOpen}
+                aria-label="Deschide meniul de navigare"
               >
-                Navigare
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <polyline points="6,9 12,15 18,9" />
-                </svg>
+                <div
+                  className={`navbar__hamburger ${
+                    isNavCompactOpen ? "navbar__hamburger--open" : ""
+                  }`}
+                >
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
               </button>
               {isNavCompactOpen && (
                 <div className="navbar__compact-menu">
@@ -227,28 +233,6 @@ function Navbar() {
                   >
                     Regulamente
                   </button>
-                  {user.role === "admin" && (
-                    <Link
-                      to="/admin"
-                      className={`navbar__compact-item ${
-                        isActive("/admin")
-                          ? "navbar__compact-item--active"
-                          : ""
-                      }`}
-                      onClick={closeNavCompact}
-                    >
-                      Admin
-                    </Link>
-                  )}
-                  <button
-                    className="navbar__compact-item navbar__compact-item--logout"
-                    onClick={async () => {
-                      await signUserOut();
-                      closeNavCompact();
-                    }}
-                  >
-                    Logout
-                  </button>
                 </div>
               )}
             </div>
@@ -269,16 +253,31 @@ function Navbar() {
                   }`}
                   onClick={toggleAccountMenu}
                   aria-expanded={isAccountMenuOpen}
+                  aria-label="Deschide meniul contului"
                 >
+                  <div
+                    className={`navbar__hamburger navbar__account-hamburger ${
+                      isAccountMenuOpen ? "navbar__hamburger--open" : ""
+                    }`}
+                  >
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
                   <img
                     src={user.google?.photoURL}
                     alt={user.numeComplet}
-                    className="navbar__avatar"
+                    className="navbar__avatar navbar__avatar--desktop"
                   />
-                  <span className="navbar__username d-lg-flex d-md-none">
+                  <span className="navbar__username navbar__username--desktop">
                     {user.numeComplet}
                   </span>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <svg
+                    className="navbar__account-caret"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                  >
                     <polyline points="6,9 12,15 18,9" />
                   </svg>
                 </button>
@@ -288,6 +287,15 @@ function Navbar() {
                       <span className="navbar__status navbar__status--pending">
                         Pending
                       </span>
+                    )}
+                    {user.role === "admin" && (
+                      <Link
+                        to="/admin"
+                        className="navbar__account-item"
+                        onClick={closeAccountMenu}
+                      >
+                        Admin
+                      </Link>
                     )}
                     <button
                       className="navbar__account-item navbar__account-item--logout"
@@ -337,7 +345,9 @@ function Navbar() {
               className="navbar__avatar"
             />
             <div className="navbar__user-info">
-              <span className="navbar__username">{user.numeComplet}</span>
+              <span className="navbar__username navbar__username--mobile">
+                {user.numeComplet}
+              </span>
               {!user.validate && (
                 <span className="navbar__status navbar__status--pending">
                   Pending Approval
