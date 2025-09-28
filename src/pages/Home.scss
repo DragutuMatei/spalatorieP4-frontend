@@ -410,13 +410,27 @@
   }
 }
 
-// Responsive table for mobile
-@include mobile {
-  .home__schedule .card__grid {
+.home__schedule {
+  .table__scroll {
+    width: 100%;
     overflow-x: auto;
-    
-    &__scroll {
-      min-width: 600px;
+    -webkit-overflow-scrolling: touch;
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+
+    table {
+      min-width: 720px;
+    }
+  }
+
+  @include mobile {
+    .table__scroll {
+      border-top: none;
+      border-bottom: none;
+
+      table {
+        min-width: 640px;
+      }
     }
   }
 }

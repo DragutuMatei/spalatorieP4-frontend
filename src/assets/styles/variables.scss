@@ -45,11 +45,19 @@ $warning: $primary-orange;
 $error: #ef4444;
 $info: $primary-blue;
 
-// Breakpoints
-$mobile: 480px;
-$tablet: 768px;
-$desktop: 1024px;
-$large: 1280px;
+// Breakpoints - 6 mărimi de ecran
+$xs: 320px;   // Extra small (telefoane mici)
+$sm: 480px;   // Small (telefoane)
+$md: 768px;   // Medium (tablete)
+$lg: 1024px;  // Large (laptop-uri mici)
+$xl: 1280px;  // Extra large (desktop)
+$xxl: 1440px; // Extra extra large (ecrane mari)
+
+// Legacy breakpoints (pentru compatibilitate)
+$mobile: $sm;
+$tablet: $md;
+$desktop: $lg;
+$large: $xl;
 
 // Spacing
 $spacing-xs: 0.25rem;
@@ -79,7 +87,112 @@ $z-modal: 1050;
 $z-popover: 1060;
 $z-tooltip: 1070;
 
-// Mixins
+// Mixins pentru toate mărimile de ecran
+@mixin xs {
+  @media (max-width: #{$xs - 1px}) {
+    @content;
+  }
+}
+
+@mixin sm {
+  @media (min-width: #{$xs}) and (max-width: #{$sm - 1px}) {
+    @content;
+  }
+}
+
+@mixin md {
+  @media (min-width: #{$sm}) and (max-width: #{$md - 1px}) {
+    @content;
+  }
+}
+
+@mixin lg {
+  @media (min-width: #{$md}) and (max-width: #{$lg - 1px}) {
+    @content;
+  }
+}
+
+@mixin xl {
+  @media (min-width: #{$lg}) and (max-width: #{$xl - 1px}) {
+    @content;
+  }
+}
+
+@mixin xxl {
+  @media (min-width: #{$xl}) {
+    @content;
+  }
+}
+
+// Mixins pentru range-uri
+@mixin xs-only {
+  @media (max-width: #{$xs - 1px}) {
+    @content;
+  }
+}
+
+@mixin sm-only {
+  @media (min-width: #{$xs}) and (max-width: #{$sm - 1px}) {
+    @content;
+  }
+}
+
+@mixin md-only {
+  @media (min-width: #{$sm}) and (max-width: #{$md - 1px}) {
+    @content;
+  }
+}
+
+@mixin lg-only {
+  @media (min-width: #{$md}) and (max-width: #{$lg - 1px}) {
+    @content;
+  }
+}
+
+@mixin xl-only {
+  @media (min-width: #{$lg}) and (max-width: #{$xl - 1px}) {
+    @content;
+  }
+}
+
+@mixin xxl-only {
+  @media (min-width: #{$xl}) {
+    @content;
+  }
+}
+
+// Mixins pentru "de la"
+@mixin sm-up {
+  @media (min-width: #{$xs}) {
+    @content;
+  }
+}
+
+@mixin md-up {
+  @media (min-width: #{$sm}) {
+    @content;
+  }
+}
+
+@mixin lg-up {
+  @media (min-width: #{$md}) {
+    @content;
+  }
+}
+
+@mixin xl-up {
+  @media (min-width: #{$lg}) {
+    @content;
+  }
+}
+
+@mixin xxl-up {
+  @media (min-width: #{$xl}) {
+    @content;
+  }
+}
+
+// Legacy mixins (pentru compatibilitate)
 @mixin mobile {
   @media (max-width: #{$mobile - 1px}) {
     @content;

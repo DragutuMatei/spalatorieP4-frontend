@@ -230,7 +230,8 @@ function MyBooks() {
   const socket = useSocket();
   const [programari, setProgramari] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState('table'); // 'cards' or 'table'
+  const [viewMode, setViewMode] = useState("table");
+  const [isMobile, setIsMobile] = useState(false);
   const { user } = useAuth();
 
   const getProgramari = useCallback(async () => {
@@ -255,6 +256,36 @@ function MyBooks() {
   useEffect(() => {
     getProgramari();
   }, [getProgramari]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 768px)");
+
+    const handleChange = (event) => {
+      setIsMobile(event.matches);
+    };
+
+    handleChange(mediaQuery);
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", handleChange);
+    } else if (typeof mediaQuery.addListener === "function") {
+      mediaQuery.addListener(handleChange);
+    }
+
+    return () => {
+      if (typeof mediaQuery.removeEventListener === "function") {
+        mediaQuery.removeEventListener("change", handleChange);
+      } else if (typeof mediaQuery.removeListener === "function") {
+        mediaQuery.removeListener(handleChange);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isMobile) {
+      setViewMode("cards");
+    }
+  }, [isMobile]);
 
   useEffect(() => {
     socket.on("programare", ({ action, programare, programareId }) => {
@@ -358,7 +389,6 @@ END:VCALENDAR
     }
   };
 
-
   if (loading) {
     return (
       <div className="mybooks">
@@ -398,33 +428,35 @@ END:VCALENDAR
           </div>
         ) : (
           <>
-            <div className="mybooks__view-toggle">
-              <button 
-                className={viewMode === 'cards' ? 'active' : ''}
-                onClick={() => setViewMode('cards')}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <rect x="3" y="3" width="7" height="7" />
-                  <rect x="14" y="3" width="7" height="7" />
-                  <rect x="14" y="14" width="7" height="7" />
-                  <rect x="3" y="14" width="7" height="7" />
-                </svg>
-                Carduri
-              </button>
-              <button 
-                className={viewMode === 'table' ? 'active' : ''}
-                onClick={() => setViewMode('table')}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path d="M3 6h18" />
-                  <path d="M3 12h18" />
-                  <path d="M3 18h18" />
-                </svg>
-                Tabel
-              </button>
-            </div>
+            {!isMobile && (
+              <div className="mybooks__view-toggle">
+                <button
+                  className={viewMode === "cards" ? "active" : ""}
+                  onClick={() => setViewMode("cards")}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <rect x="3" y="3" width="7" height="7" />
+                    <rect x="14" y="3" width="7" height="7" />
+                    <rect x="14" y="14" width="7" height="7" />
+                    <rect x="3" y="14" width="7" height="7" />
+                  </svg>
+                  Carduri
+                </button>
+                <button
+                  className={viewMode === "table" ? "active" : ""}
+                  onClick={() => setViewMode("table")}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M3 6h18" />
+                    <path d="M3 12h18" />
+                    <path d="M3 18h18" />
+                  </svg>
+                  Tabel
+                </button>
+              </div>
+            )}
 
-            {viewMode === 'cards' ? (
+            {isMobile || viewMode === "cards" ? (
               <div className="mybooks__grid">
                 {programari.map((pro) => {
                   const [h1, m1] = pro.start_interval_time.split(":").map(Number);
@@ -439,11 +471,23 @@ END:VCALENDAR
                     <div key={pro.uid} className="mybooks__card">
                       <div className="mybooks__card-header">
                         <h3>Mașina {pro.machine}</h3>
-                        <span className={`badge badge--${isActive ? 'success' : isCancelled ? 'error' : 'warning'}`}>
-                          {isCancelled ? 'Anulată' : isActive ? 'Activă' : 'Necunoscută'}
+                        <span
+                          className={`badge badge--${isActive
+                            ? "success"
+                            : isCancelled
+                            ? "error"
+                            : "warning"}`}
+                        >
+                          {isCancelled ? "Anulată" : isActive ? "Activă" : "Necunoscută"}
                         </span>
                       </div>
-                      
+
+                      {isCancelled && pro.active?.message && (
+                        <div className="mybooks__status-reason">
+                          Motiv anulare: {pro.active.message}
+                        </div>
+                      )}
+
                       <div className="mybooks__card-body">
                         <div className="mybooks__info">
                           <div className="mybooks__info-item">
@@ -458,7 +502,7 @@ END:VCALENDAR
                               <span className="value">{dayjs(pro.date).format("DD/MM/YYYY")}</span>
                             </div>
                           </div>
-                          
+
                           <div className="mybooks__info-item">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                               <circle cx="12" cy="12" r="10" />
@@ -471,7 +515,7 @@ END:VCALENDAR
                               </span>
                             </div>
                           </div>
-                          
+
                           <div className="mybooks__info-item">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                               <circle cx="12" cy="12" r="10" />
@@ -484,7 +528,7 @@ END:VCALENDAR
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="mybooks__card-footer">
                         <div className="admin__actions">
                           {isActive && (
@@ -516,105 +560,104 @@ END:VCALENDAR
                 })}
               </div>
             ) : (
-              <div className="mybooks__table">
-            <table>
-              <thead>
-                <tr>
-                  <th>Data</th>
-                  <th>Mașina</th>
-                  <th>Ora început</th>
-                  <th>Ora final</th>
-                  <th>Durata (min)</th>
-                  <th>Status</th>
-                  <th>Acțiuni</th>
-                </tr>
-              </thead>
-              <tbody>
-                {programari.map((pro) => {
-                  const [h1, m1] = pro.start_interval_time.split(":").map(Number);
-                  const [h2, m2] = pro.final_interval_time.split(":").map(Number);
-                  const start_in_min = h1 * 60 + m1;
-                  const final_in_min = h2 * 60 + m2;
-                  const durata = final_in_min - start_in_min;
-                  const isActive = pro.active && pro.active.status === true;
-                  const isCancelled = pro.active && pro.active.status === false;
+              <div className="mybooks__table d-none d-md-block">
+                <div className="mybooks__table-scroll">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Data</th>
+                        <th>Mașina</th>
+                        <th>Ora început</th>
+                        <th>Ora final</th>
+                        <th>Durată</th>
+                        <th>Status</th>
+                        <th>Motiv anulare</th>
+                        <th>Acțiuni</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {programari.map((pro) => {
+                        const [h1, m1] = pro.start_interval_time.split(":").map(Number);
+                        const [h2, m2] = pro.final_interval_time.split(":").map(Number);
+                        const start_in_min = h1 * 60 + m1;
+                        const final_in_min = h2 * 60 + m2;
+                        const durata = final_in_min - start_in_min;
+                        const isActive = pro.active && pro.active.status === true;
+                        const isCancelled = pro.active && pro.active.status === false;
 
-                  return (
-                    <tr 
-                      key={pro.uid} 
-                      className={`${isCancelled ? 'cancelled' : ''} ${isActive ? 'active' : ''}`}
-                    >
-                      <td>{dayjs(pro.date).format("DD/MM/YYYY")}</td>
-                      <td>{pro.machine}</td>
-                      <td>{pro.start_interval_time}</td>
-                      <td>{pro.final_interval_time}</td>
-                      <td>{durata}</td>
-                      <td>
-                        {isCancelled ? (
-                          <div className="mybooks__status mybooks__status--cancelled">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                              <circle cx="12" cy="12" r="10" />
-                              <line x1="15" y1="9" x2="9" y2="15" />
-                              <line x1="9" y1="9" x2="15" y2="15" />
-                            </svg>
-                            <span>Anulată</span>
-                            {pro.active.message && (
-                              <div className="mybooks__status-reason">
-                                Motiv: {pro.active.message}
-                              </div>
-                            )}
-                          </div>
-                        ) : isActive ? (
-                          <div className="mybooks__status mybooks__status--active">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                              <polyline points="22,4 12,14.01 9,11.01" />
-                            </svg>
-                            <span>Activă</span>
-                          </div>
-                        ) : (
-                          <div className="mybooks__status mybooks__status--unknown">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                              <circle cx="12" cy="12" r="10" />
-                              <path d="M9,9h0" />
-                              <path d="M15,9h0" />
-                              <path d="M8,15s1.5,2,4,2,4-2,4-2" />
-                            </svg>
-                            <span>Necunoscută</span>
-                          </div>
-                        )}
-                      </td>
-                      <td>
-                        <div className="admin__actions">
-                          {isActive && (
-                            <>
-                              <button
-                                className="btn btn-primary"
-                                onClick={() => addToGoogleCalendar(pro, start_in_min, final_in_min)}
-                              >
-                                Google Calendar
-                              </button>
-                              <button
-                                className="btn btn-success"
-                                onClick={() => downloadIcsFile(pro, start_in_min, final_in_min)}
-                              >
-                                Download
-                              </button>
-                            </>
-                          )}
-                          <button
-                            className="btn btn-danger"
-                            onClick={() => sterge(pro.uid)}
+                        return (
+                          <tr
+                            key={pro.uid}
+                            className={isCancelled ? "cancelled" : isActive ? "active" : ""}
                           >
-                            Șterge
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                            <td>{dayjs(pro.date).format("DD/MM/YYYY")}</td>
+                            <td>{pro.machine}</td>
+                            <td>{pro.start_interval_time}</td>
+                            <td>{pro.final_interval_time}</td>
+                            <td>{durata} minute</td>
+                            <td>
+                              {isCancelled ? (
+                                <div className="mybooks__status mybooks__status--cancelled">
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <line x1="15" y1="9" x2="9" y2="15" />
+                                    <line x1="9" y1="9" x2="15" y2="15" />
+                                  </svg>
+                                  <span>Anulată</span>
+                                </div>
+                              ) : isActive ? (
+                                <div className="mybooks__status mybooks__status--active">
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <polyline points="9 12 11 14 15 10" />
+                                  </svg>
+                                  <span>Activă</span>
+                                </div>
+                              ) : (
+                                <div className="mybooks__status mybooks__status--unknown">
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <path d="M9,9h0" />
+                                    <path d="M15,9h0" />
+                                    <path d="M8,15s1.5,2,4,2,4-2,4-2" />
+                                  </svg>
+                                  <span>Necunoscută</span>
+                                </div>
+                              )}
+                            </td>
+                            <td>{isCancelled && pro.active?.message ? pro.active.message : "-"}</td>
+                            <td>
+                              <div className="admin__actions">
+                                {isActive && (
+                                  <>
+                                    <button
+                                      className="btn btn-primary"
+                                      onClick={() => addToGoogleCalendar(pro, start_in_min, final_in_min)}
+                                    >
+                                      Google Calendar
+                                    </button>
+                                    <button
+                                      className="btn btn-success"
+                                      onClick={() => downloadIcsFile(pro, start_in_min, final_in_min)}
+                                    >
+                                      Download
+                                    </button>
+                                  </>
+                                )}
+                                <button
+                                  className="btn btn-danger"
+                                  onClick={() => sterge(pro.uid)}
+                                >
+                                  Șterge
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </>
@@ -625,3 +668,242 @@ END:VCALENDAR
 }
 
 export default MyBooks;
+//   if (loading) {
+//     return (
+//       <div className="mybooks">
+//         <div className="container">
+//           <div className="mybooks__loading">
+//             <div className="mybooks__spinner"></div>
+//             <p>Se încarcă programările...</p>
+//           </div>
+//         </div>
+//       </div>
+//     );
+//   }
+
+//   return (
+//     <div className="mybooks">
+//       <div className="container">
+//         <div className="mybooks__header">
+//           <h1>Programările Mele</h1>
+//           <p>Vizualizează și gestionează programările tale</p>
+//         </div>
+
+//         {programari.length === 0 ? (
+//           <div className="mybooks__empty">
+//             <div className="mybooks__empty-icon">
+//               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+//                 <path d="M8 2v4" />
+//                 <path d="M16 2v4" />
+//                 <rect x="3" y="4" width="18" height="18" rx="2" />
+//                 <path d="M3 10h18" />
+//               </svg>
+//             </div>
+//             <h3>Nu ai nicio programare</h3>
+//             <p>Poți face o programare nouă accesând pagina principală.</p>
+//             <a href="/" className="btn btn-primary">
+//               Fă o programare
+//             </a>
+//           </div>
+//         ) : (
+//           <>
+//             {!isMobile && (
+//               <div className="mybooks__view-toggle">
+//                 <button
+//                   className={viewMode === "cards" ? "active" : ""}
+//                   onClick={() => setViewMode("cards")}
+//                 >
+//                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+//                     <rect x="3" y="3" width="7" height="7" />
+//                     <rect x="14" y="3" width="7" height="7" />
+//                     <rect x="14" y="14" width="7" height="7" />
+//                     <rect x="3" y="14" width="7" height="7" />
+//                   </svg>
+//                   Carduri
+//                 </button>
+//                 <button
+//                   className={viewMode === "table" ? "active" : ""}
+//                   onClick={() => setViewMode("table")}
+//                 >
+//                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+//                     <path d="M3 6h18" />
+//                     <path d="M3 12h18" />
+//                     <path d="M3 18h18" />
+//                   </svg>
+//                   Tabel
+//                 </button>
+//               </div>
+//             )}
+
+//             {viewMode === "cards" ? (
+//               <div className="mybooks__grid">
+//                 {programari.map((pro) => {
+//                   const [h1, m1] = pro.start_interval_time.split(":").map(Number);
+//                   const [h2, m2] = pro.final_interval_time.split(":").map(Number);
+//                   const start_in_min = h1 * 60 + m1;
+//                   const final_in_min = h2 * 60 + m2;
+//                   const durata = final_in_min - start_in_min;
+//                   const isActive = pro.active && pro.active.status === true;
+//                   const isCancelled = pro.active && pro.active.status === false;
+
+//                   return (
+//                     <div key={pro.uid} className="mybooks__card">
+//                       <div className="mybooks__card-header">
+//                         <h3>Mașina {pro.machine}</h3>
+//                         <span
+//                           className={`badge badge--${isActive
+//                             ? "success"
+//                             : isCancelled
+//                             ? "error"
+//                             : "warning"}`}
+//                         >
+//                           {isCancelled
+//                             ? "Anulată"
+//                             : isActive
+//                             ? "Activă"
+//                             : "Necunoscută"}
+//                         </span>
+//                       </div>
+                      
+//                       <div className="mybooks__card-body">
+//                         <div className="mybooks__info">
+//                           <div className="mybooks__info-item">
+//                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+//                               <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+//                               <line x1="16" y1="2" x2="16" y2="6" />
+//                               <line x1="8" y1="2" x2="8" y2="6" />
+//                               <line x1="3" y1="10" x2="21" y2="10" />
+//                             </svg>
+//                             <div>
+//                               <span className="label">Data</span>
+//                               <span className="value">{dayjs(pro.date).format("DD/MM/YYYY")}</span>
+//                             </div>
+//                           </div>
+                          
+//                           <div className="mybooks__info-item">
+//                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+//                               <circle cx="12" cy="12" r="10" />
+//                               <polyline points="12,6 12,12 16,14" />
+//                             </svg>
+//                             <div>
+//                               <span className="label">Interval</span>
+//                               <span className="value">
+//                                 {pro.start_interval_time} - {pro.final_interval_time}
+//                               </span>
+//                             </div>
+//                           </div>
+                          
+//                           <div className="mybooks__info-item">
+//                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+//                               <circle cx="12" cy="12" r="10" />
+//                               <path d="M12 6v6l4 2" />
+//                             </svg>
+//                             <div>
+//                               <span className="label">Durată</span>
+//                               <span className="value">{durata} minute</span>
+//                             </div>
+//                           </div>
+//                         </div>
+//                       </div>
+                      
+//                       <div className="mybooks__card-footer">
+//                         <div className="admin__actions">
+//                           {isActive && (
+//                             <>
+//                               <button
+//                                 className="btn btn-primary"
+//                                 onClick={() => addToGoogleCalendar(pro, start_in_min, final_in_min)}
+//                               >
+//                                 Google Calendar
+//                               </button>
+//                               <button
+//                                 className="btn btn-success"
+//                                 onClick={() => downloadIcsFile(pro, start_in_min, final_in_min)}
+//                               >
+//                                 Download
+//                               </button>
+//                             </>
+//                           )}
+//                           <button
+//                             className="btn btn-danger"
+//                             onClick={() => sterge(pro.uid)}
+//                           >
+//                             Șterge
+//                           </button>
+//                         </div>
+//                       </div>
+//                     </div>
+//                   );
+//                 })}
+//               </div>
+//             ) : (
+//               <div className="mybooks__table d-none d-md-block">
+//                 <table>
+//               <thead>
+//                 <tr>
+//                   <th>Data</th>
+//                   <th>Mașina</th>
+//                   <th>Ora început</th>
+// {{ ... }}
+//                               <circle cx="12" cy="12" r="10" />
+//                               <line x1="15" y1="9" x2="9" y2="15" />
+//                               <line x1="9" y1="9" x2="15" y2="15" />
+//                             </svg>
+//                             <span>Anulată</span>
+//                         {pro.active.message && (
+//                           <div className="mybooks__status-reason d-block d-md-none">
+//                             Motiv: {pro.active.message}
+//                           </div>
+//                             </svg>
+//                             <span>Activă</span>
+//                           </div>
+//                         ) : (
+//                           <div className="mybooks__status mybooks__status--unknown">
+//                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+//                               <circle cx="12" cy="12" r="10" />
+//                               <path d="M9,9h0" />
+//                               <path d="M15,9h0" />
+//                               <path d="M8,15s1.5,2,4,2,4-2,4-2" />
+//                             <span>Necunoscută</span>
+//                           </div>
+//                         )}
+//                       </td>
+//                       <td>
+//                         <div className="admin__actions">
+//                           {isActive && (
+//                             <>
+//                               <button
+//                                 className="btn btn-primary"
+//                                 onClick={() => addToGoogleCalendar(pro, start_in_min, final_in_min)}
+//                               >
+//                                 Google Calendar
+//                               </button>
+//                               <button
+//                                 className="btn btn-success"
+//                                 onClick={() => downloadIcsFile(pro, start_in_min, final_in_min)}
+//                               >
+//                                 Download
+//                               </button>
+//                             </>
+//                           )}
+//                           <button
+//                             className="btn btn-danger"
+//                             onClick={() => sterge(pro.uid)}
+//                           >
+//                             Șterge
+//                           </button>
+//                         </div>
+//                       </td>
+//                     </tr>
+//                   );
+//                 })}
+//               </tbody>
+//             </table>
+//           </div>
+//         )}
+//       </div>
+//     </div>
+//   );
+// }
+
+// export default MyBooks;

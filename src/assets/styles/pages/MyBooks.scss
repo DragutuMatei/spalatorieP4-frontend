@@ -394,3 +394,14 @@
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+.mybooks__status-reason--card {
+  margin: $spacing-md $spacing-lg 0;
+  color: var(--error);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.mybooks__table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}

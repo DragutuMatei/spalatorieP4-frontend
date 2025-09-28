@@ -1,5 +1,32 @@
 @import '../variables.scss';
 
+// Utility classes pentru responsive display
+.d-xs-none { @include xs { display: none !important; } }
+.d-sm-none { @include sm { display: none !important; } }
+.d-md-none { @include md { display: none !important; } }
+.d-lg-none { @include lg { display: none !important; } }
+.d-xl-none { @include xl { display: none !important; } }
+.d-xxl-none { @include xxl { display: none !important; } }
+
+.d-xs-block { @include xs { display: block !important; } }
+.d-sm-block { @include sm { display: block !important; } }
+.d-md-block { @include md { display: block !important; } }
+.d-lg-block { @include lg { display: block !important; } }
+.d-xl-block { @include xl { display: block !important; } }
+.d-xxl-block { @include xxl { display: block !important; } }
+
+.d-xs-flex { @include xs { display: flex !important; } }
+.d-sm-flex { @include sm { display: flex !important; } }
+.d-md-flex { @include md { display: flex !important; } }
+.d-lg-flex { @include lg { display: flex !important; } }
+.d-xl-flex { @include xl { display: flex !important; } }
+.d-xxl-flex { @include xxl { display: flex !important; } }
+
+// Legacy classes
+.d-mobile-none { @include mobile { display: none !important; } }
+.d-tablet-none { @include tablet { display: none !important; } }
+.d-desktop-none { @include desktop { display: none !important; } }
+
 .navbar {
   background-color: var(--bg-primary);
   border-bottom: 1px solid var(--border-color);
@@ -9,7 +36,7 @@
   @include theme-transition;
   
   &__container {
-    max-width: $large;
+    max-width: $xxl;
     margin: 0 auto;
     padding: 0 $spacing-md;
     display: flex;
@@ -17,9 +44,46 @@
     justify-content: space-between;
     height: 80px;
     
+    // Extra small phones (< 320px)
+    @include xs {
+      padding: 0 $spacing-xs;
+      height: 60px;
+    }
+    
+    // Small phones (320px - 479px)
+    @include sm {
+      padding: 0 $spacing-sm;
+      height: 65px;
+    }
+    
+    // Medium tablets (480px - 767px)
+    @include md {
+      padding: 0 $spacing-md;
+      height: 70px;
+    }
+    
+    // Large laptops (768px - 1023px)
+    @include lg {
+      padding: 0 $spacing-lg;
+      height: 75px;
+    }
+    
+    // Extra large desktop (1024px - 1279px)
+    @include xl {
+      padding: 0 $spacing-xl;
+      height: 80px;
+    }
+    
+    // Extra extra large (1280px+)
+    @include xxl {
+      padding: 0 $spacing-2xl;
+      height: 85px;
+    }
+    
+    // Legacy mobile support
     @include mobile {
       padding: 0 $spacing-sm;
-      height: 70px;
+      height: 65px;
     }
   }
   
@@ -30,14 +94,82 @@
     text-decoration: none;
     color: var(--text-primary);
     font-weight: 600;
-    font-size: 1.25rem;
+    font-size: 1rem;
+    
+    // Extra small phones
+    @include xs {
+      gap: $spacing-xs;
+      font-size: 0.875rem;
+    }
+    
+    // Small phones
+    @include sm {
+      gap: $spacing-sm;
+      font-size: 1rem;
+    }
+    
+    // Medium tablets
+    @include md {
+      gap: $spacing-md;
+      font-size: 1.125rem;
+    }
+    
+    // Large laptops
+    @include lg {
+      gap: $spacing-lg;
+      font-size: 1.25rem;
+    }
+    
+    // Extra large desktop
+    @include xl {
+      gap: $spacing-lg;
+      font-size: 1.375rem;
+    }
+    
+    // Extra extra large
+    @include xxl {
+      gap: $spacing-xl;
+      font-size: 1.5rem;
+    }
     
     svg {
-      height: 50px;
+      height: 45px;
       width: auto;
+      padding:3px;
       
-      @include mobile {
+      // Extra small phones
+      @include xs {
+        height: 30px;
+      }
+      
+      // Small phones
+      @include sm {
+        height: 35px;
+      }
+      
+      // Medium tablets
+      @include md {
+        height: 30px;
+      }
+      
+      // Large laptops
+      @include lg {
+        height: 35px;
+      }
+      
+      // Extra large desktop
+      @include xl {
         height: 40px;
+      }
+      
+      // Extra extra large
+      @include xxl {
+        height: 45px;
+      }
+      
+      // Legacy mobile support
+      @include mobile {
+        height: 35px;
       }
     }
     
@@ -47,6 +179,21 @@
   }
   
   &__brand {
+    // Hide brand text on very small screens
+    @include xs {
+      display: none;
+    }
+    
+    @include sm {
+      display: none;
+    }
+    
+    // Show on tablets and up
+    @include md-up {
+      display: block;
+    }
+    
+    // Legacy mobile support
     @include mobile {
       display: none;
     }
@@ -56,6 +203,42 @@
     display: flex;
     align-items: center;
     gap: $spacing-lg;
+    
+    // Extra small phones - hide completely, use mobile menu
+    @include xs {
+      display: none;
+    }
+    
+    // Small phones - hide completely, use mobile menu
+    @include sm {
+      display: none;
+    }
+    
+    // Medium tablets - show with smaller gap
+    @include md {
+      display: flex;
+      gap: $spacing-sm;
+    }
+    
+    // Large laptops - normal gap
+    @include lg {
+      gap: $spacing-md;
+    }
+    
+    // Extra large desktop - larger gap
+    @include xl {
+      gap: $spacing-lg;
+    }
+    
+    // Extra extra large - extra large gap
+    @include xxl {
+      gap: $spacing-xl;
+    }
+    
+    // Legacy mobile support
+    @include mobile {
+      display: none;
+    }
   }
   
   &__link {
@@ -66,6 +249,31 @@
     border-radius: $radius-md;
     transition: all $transition-fast;
     position: relative;
+    font-size: 0.875rem;
+    
+    // Medium tablets - smaller padding and font
+    @include md {
+      padding: $spacing-xs $spacing-sm;
+      font-size: 0.8rem;
+    }
+    
+    // Large laptops - normal size
+    @include lg {
+      padding: $spacing-sm $spacing-md;
+      font-size: 0.875rem;
+    }
+    
+    // Extra large desktop - larger size
+    @include xl {
+      padding: $spacing-sm $spacing-lg;
+      font-size: 0.9rem;
+    }
+    
+    // Extra extra large - extra large size
+    @include xxl {
+      padding: $spacing-md $spacing-xl;
+      font-size: 1rem;
+    }
     
     &:hover {
       color: var(--primary-blue);
@@ -131,18 +339,322 @@
         }
       }
     }
+    
+    &--dropdown {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      position: relative;
+      
+      &:hover {
+        color: var(--primary-blue);
+        
+        .dropdown-icon {
+          transform: translateY(-1px);
+          color: var(--primary-blue);
+          opacity: 1;
+        }
+      }
+    }
+  }
+  
+  // Dropdown styles
+  &__dropdown {
+    position: relative;
+    
+    &-menu {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+      z-index: $z-dropdown;
+      min-width: 240px;
+      padding: 8px 0;
+      backdrop-filter: blur(10px);
+      
+      // Arrow pointing up
+      &::before {
+        content: '';
+        position: absolute;
+        top: -6px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 12px;
+        height: 12px;
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-bottom: none;
+        border-right: none;
+        transform: translateX(-50%) rotate(45deg);
+      }
+      
+      // Responsive adjustments
+      @include xs {
+        min-width: 200px;
+        left: 0;
+        transform: none;
+        
+        &::before {
+          left: 24px;
+          transform: rotate(45deg);
+        }
+      }
+      
+      @include sm {
+        min-width: 220px;
+      }
+      
+      @include md-up {
+        min-width: 260px;
+      }
+    }
+    
+    &-item {
+      width: 100%;
+      padding: 12px 16px;
+      background: none;
+      border: none;
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      
+      // Responsive adjustments
+      @include xs {
+        padding: 10px 12px;
+        font-size: 0.8rem;
+        gap: 8px;
+      }
+      
+      @include sm {
+        padding: 11px 14px;
+        font-size: 0.825rem;
+        gap: 10px;
+      }
+      
+      .download-icon {
+        width: 18px;
+        height: 18px;
+        opacity: 0.6;
+        color: var(--primary-blue);
+        transition: all 0.2s ease;
+        
+        @include xs {
+          width: 16px;
+          height: 16px;
+        }
+        
+        @include sm {
+          width: 17px;
+          height: 17px;
+        }
+      }
+      
+      &:hover {
+        background: linear-gradient(135deg, var(--primary-blue-light), var(--primary-blue));
+        color: white;
+        transform: translateX(4px);
+        
+        .download-icon {
+          opacity: 1;
+          color: white;
+          transform: scale(1.1);
+        }
+      }
+      
+      &:active {
+        transform: translateX(2px);
+      }
+      
+      // Subtle border between items
+      &:not(:last-child)::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 16px;
+        right: 16px;
+        height: 1px;
+        background: var(--border-color);
+        opacity: 0.3;
+      }
+      
+      &:first-child {
+        border-radius: 12px 12px 0 0;
+      }
+      
+      &:last-child {
+        border-radius: 0 0 12px 12px;
+      }
+      
+      &:only-child {
+        border-radius: 12px;
+      }
+    }
+  }
+  
+  // Mobile dropdown styles
+  &__mobile-dropdown {
+    &-menu {
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      margin: 12px 0;
+      padding: 8px 0;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+      backdrop-filter: blur(8px);
+      max-height: 50vh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    &-item {
+      width: 100%;
+      padding: 12px 16px;
+      background: none;
+      border: none;
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      
+      // Responsive adjustments
+      @include xs {
+        padding: 10px 12px;
+        font-size: 0.8rem;
+        gap: 8px;
+      }
+      
+      @include sm {
+        padding: 11px 14px;
+        font-size: 0.825rem;
+        gap: 10px;
+      }
+      
+      .download-icon {
+        width: 18px;
+        height: 18px;
+        opacity: 0.6;
+        color: var(--primary-blue);
+        transition: all 0.2s ease;
+        
+        @include xs {
+          width: 16px;
+          height: 16px;
+        }
+        
+        @include sm {
+          width: 17px;
+          height: 17px;
+        }
+      }
+      
+      &:hover {
+        background: linear-gradient(135deg, var(--primary-blue-light), var(--primary-blue));
+        color: white;
+        transform: translateX(4px);
+        
+        .download-icon {
+          opacity: 1;
+          color: white;
+          transform: scale(1.1);
+        }
+      }
+      
+      &:active {
+        transform: translateX(2px);
+      }
+      
+      // Subtle border between items
+      &:not(:last-child)::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 16px;
+        right: 16px;
+        height: 1px;
+        background: var(--border-color);
+        opacity: 0.3;
+      }
+      
+      &:first-child {
+        border-radius: 12px 12px 0 0;
+      }
+      
+      &:last-child {
+        border-radius: 0 0 12px 12px;
+      }
+      
+      &:only-child {
+        border-radius: 12px;
+      }
+    }
   }
   
   &__actions {
     display: flex;
     align-items: center;
     gap: $spacing-md;
+
+    
+    // Extra small phones - smaller gap
+    @include xs {
+      gap: $spacing-xs;
+    }
+    
+    // Small phones - small gap
+    @include sm {
+      gap: $spacing-sm;
+    }
+    
+    // Medium tablets - medium gap
+    @include md {
+      gap: $spacing-md;
+    }
+    
+    // Large laptops and up - larger gaps
+    @include lg-up {
+      gap: $spacing-lg;
+    }
   }
   
   &__user {
     display: flex;
     align-items: center;
     gap: $spacing-sm;
+    
+    // Extra small phones - hide username, show only avatar
+    @include xs {
+      gap: 0;
+    }
+    
+    // Small phones - very small gap
+    @include sm {
+      gap: $spacing-xs;
+    }
+    
+    // Medium tablets and up - normal gap
+    @include md-up {
+      gap: $spacing-sm;
+    }
   }
   
   &__avatar {
@@ -152,9 +664,48 @@
     border: 2px solid var(--border-color);
     object-fit: cover;
     
-    @include mobile {
+    // Extra small phones
+    @include xs {
+      width: 28px;
+      height: 28px;
+      border-width: 1px;
+    }
+    
+    // Small phones
+    @include sm {
+      width: 30px;
+      height: 30px;
+      border-width: 1px;
+    }
+    
+    // Medium tablets
+    @include md {
       width: 32px;
       height: 32px;
+    }
+    
+    // Large laptops
+    @include lg {
+      width: 36px;
+      height: 36px;
+    }
+    
+    // Extra large desktop
+    @include xl {
+      width: 40px;
+      height: 40px;
+    }
+    
+    // Extra extra large
+    @include xxl {
+      width: 44px;
+      height: 44px;
+    }
+    
+    // Legacy mobile support
+    @include mobile {
+      width: 30px;
+      height: 30px;
     }
   }
   
@@ -162,6 +713,37 @@
     color: var(--text-primary);
     font-weight: 500;
     font-size: 0.875rem;
+    
+    // Extra small phones - hide completely
+    @include xs {
+      display: none;
+    }
+    
+    // Small phones - hide completely
+    @include sm {
+      display: none;
+    }
+    
+    // Medium tablets - show with smaller font
+    @include md {
+      display: block;
+      font-size: 0.75rem;
+    }
+    
+    // Large laptops - normal font
+    @include lg {
+      font-size: 0.875rem;
+    }
+    
+    // Extra large desktop - larger font
+    @include xl {
+      font-size: 0.9rem;
+    }
+    
+    // Extra extra large - extra large font
+    @include xxl {
+      font-size: 1rem;
+    }
   }
   
   &__status {
@@ -185,6 +767,21 @@
     border-radius: $radius-md;
     transition: background-color $transition-fast;
     
+    // Show only on small screens
+    @include md-up {
+      display: none;
+    }
+    
+    // Extra small phones - smaller padding
+    @include xs {
+      padding: $spacing-xs;
+    }
+    
+    // Small phones - small padding
+    @include sm {
+      padding: $spacing-sm;
+    }
+    
     &:hover {
       background-color: var(--bg-secondary);
     }
@@ -196,6 +793,18 @@
     width: 24px;
     height: 18px;
     position: relative;
+    
+    // Extra small phones - smaller hamburger
+    @include xs {
+      width: 20px;
+      height: 15px;
+    }
+    
+    // Small phones - medium hamburger
+    @include sm {
+      width: 22px;
+      height: 16px;
+    }
     
     span {
       display: block;
@@ -249,6 +858,9 @@
     z-index: $z-fixed;
     display: flex;
     flex-direction: column;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
     @include theme-transition;
     
     @include desktop {
@@ -322,6 +934,37 @@
         border-left-color: var(--error);
       }
     }
+    
+    &--dropdown {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      
+      &:hover {
+        .dropdown-icon {
+          transform: translateY(-1px);
+          color: var(--primary-blue);
+        }
+      }
+      
+      .dropdown-icon {
+        width: 16px;
+        height: 16px;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        opacity: 0.7;
+        
+        @include xs {
+          width: 14px;
+          height: 14px;
+        }
+        
+        &--open {
+          transform: rotate(180deg);
+          color: var(--primary-blue);
+          opacity: 1;
+        }
+      }
+    }
   }
   
   &__mobile-logout {
@@ -338,6 +981,43 @@
     background-color: rgba(0, 0, 0, 0.5);
     z-index: $z-modal-backdrop;
     
+    // Extra small phones
+    @include xs {
+      top: 60px;
+      height: calc(100vh - 60px);
+    }
+    
+    // Small phones
+    @include sm {
+      top: 65px;
+      height: calc(100vh - 65px);
+    }
+    
+    // Medium tablets
+    @include md {
+      top: 70px;
+      height: calc(100vh - 70px);
+    }
+    
+    // Large laptops
+    @include lg {
+      top: 75px;
+      height: calc(100vh - 75px);
+    }
+    
+    // Extra large desktop
+    @include xl {
+      top: 80px;
+      height: calc(100vh - 80px);
+    }
+    
+    // Extra extra large
+    @include xxl {
+      top: 85px;
+      height: calc(100vh - 85px);
+    }
+    
+    // Legacy desktop support
     @include desktop {
       top: 80px;
       height: calc(100vh - 80px);

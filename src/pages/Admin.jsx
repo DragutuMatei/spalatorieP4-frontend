@@ -623,35 +623,37 @@ function Admin() {
             <div className="admin__table">
               <h3>Intervale de mentenanță</h3>
               {maintenanceIntervals.length > 0 ? (
-                <table>
-                  <thead>
+                <div className="admin__table-scroll">
+                  <table>
+                    <thead>
                     <tr>
                       <th>Data</th>
                       <th>Mașina</th>
                       <th>Interval</th>
                       <th>Acțiuni</th>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {maintenanceIntervals.map((interval) => (
-                      <tr key={interval.uid}>
-                        <td>{safeRender(interval.date)}</td>
-                        <td>{safeRender(interval.machine)}</td>
-                        <td>
-                          {safeRender(interval.startTime)} - {safeRender(interval.endTime)}
-                        </td>
-                        <td>
-                          <button
-                            className="btn btn-danger"
-                            onClick={() => deleteMaintenance(interval.uid)}
-                          >
-                            Șterge
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {maintenanceIntervals.map((interval) => (
+                        <tr key={interval.uid}>
+                          <td>{safeRender(interval.date)}</td>
+                          <td>{safeRender(interval.machine)}</td>
+                          <td>
+                            {safeRender(interval.startTime)} - {safeRender(interval.endTime)}
+                          </td>
+                          <td>
+                            <button
+                              className="btn btn-danger"
+                              onClick={() => deleteMaintenance(interval.uid)}
+                            >
+                              Șterge
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               ) : (
                 <div className="admin__table--empty">
                   Nu există intervale de mentenanță programate
@@ -701,8 +703,9 @@ function Admin() {
 
             <div className="admin__table">
               {filteredUsers.length > 0 ? (
-                <table>
-                  <thead>
+                <div className="admin__table-scroll">
+                  <table>
+                    <thead>
                     <tr>
                       <th>Nume</th>
                       <th>Email</th>
@@ -712,36 +715,37 @@ function Admin() {
                       <th>Rol</th>
                       <th>Acțiuni</th>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {filteredUsers.map((user) => (
-                      <tr key={user.uid} className={user.validate ? 'approved' : 'pending'}>
-                        <td>{safeRender(user.numeComplet)}</td>
-                        <td>{safeRender(user.google?.email || user.email)}</td>
-                        <td>{safeRender(user.camera)}</td>
-                        <td>{safeRender(user.telefon)}</td>
-                        <td>{user.validate ? 'Da' : 'Nu'}</td>
-                        <td>{safeRender(user.role, 'user')}</td>
-                        <td>
-                          <div className="admin__actions">
-                            <button
-                              className={`btn ${user.validate ? 'btn-danger' : 'btn-success'}`}
-                              onClick={() => toggleApproval(user.uid, user.validate)}
-                            >
-                              {user.validate ? 'Dezactivează' : 'Activează'}
-                            </button>
-                            <button
-                              className="btn btn-primary"
-                              onClick={() => toggleAdmin(user.uid, user.role)}
-                            >
-                              {user.role === 'admin' ? 'Remove Admin' : 'Make Admin'}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {filteredUsers.map((user) => (
+                        <tr key={user.uid} className={user.validate ? 'approved' : 'pending'}>
+                          <td>{safeRender(user.numeComplet)}</td>
+                          <td>{safeRender(user.google?.email || user.email)}</td>
+                          <td>{safeRender(user.camera)}</td>
+                          <td>{safeRender(user.telefon)}</td>
+                          <td>{user.validate ? 'Da' : 'Nu'}</td>
+                          <td>{safeRender(user.role, 'user')}</td>
+                          <td>
+                            <div className="admin__actions">
+                              <button
+                                className={`btn ${user.validate ? 'btn-danger' : 'btn-success'}`}
+                                onClick={() => toggleApproval(user.uid, user.validate)}
+                              >
+                                {user.validate ? 'Dezactivează' : 'Activează'}
+                              </button>
+                              <button
+                                className="btn btn-primary"
+                                onClick={() => toggleAdmin(user.uid, user.role)}
+                              >
+                                {user.role === 'admin' ? 'Remove Admin' : 'Make Admin'}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               ) : (
                 <div className="admin__table--empty">
                   Nu s-au găsit utilizatori
@@ -799,8 +803,9 @@ function Admin() {
 
             <div className="admin__table">
               {displayedBookings.length > 0 ? (
-                <table>
-                  <thead>
+                <div className="admin__table-scroll">
+                  <table>
+                    <thead>
                     <tr>
                       <th>Data</th>
                       <th>Mașină</th>
@@ -812,48 +817,49 @@ function Admin() {
                       <th>Motiv anulare</th>
                       <th>Acțiuni</th>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {displayedBookings
-                      .filter(booking => {
-                        if (!bookingSearchTerm) return true;
-                        const nume = typeof booking.user?.numeComplet === 'string' ? booking.user.numeComplet.toLowerCase() : '';
-                        return nume.includes(bookingSearchTerm.toLowerCase());
-                      })
-                      .map(booking => (
-                        <tr key={booking.uid}>
-                          <td>{formatDate(booking.date)}</td>
-                          <td>{safeRender(booking.machine)}</td>
-                          <td>{safeRender(booking.start_interval_time)}</td>
-                          <td>{safeRender(booking.final_interval_time)}</td>
-                          <td>
-                            {booking.duration 
-                              ? `${safeRender(booking.duration)} min` 
-                              : `${calculateDuration(booking.start_interval_time, booking.final_interval_time)} min`
-                            }
-                          </td>
-                          <td>{safeRender(booking.user?.numeComplet)}</td>
-                          <td>{safeRender(booking.user?.camera)}</td>
-                          <td>
-                            <input
-                              type="text"
-                              value={reasons[booking.uid] || ''}
-                              onChange={(e) => setReasons({ ...reasons, [booking.uid]: e.target.value })}
-                              placeholder="Motiv anulare..."
-                            />
-                          </td>
-                          <td>
-                            <button
-                              className="btn btn-warning"
-                              onClick={() => deleteBooking(booking.uid)}
-                            >
-                              Anulează
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {displayedBookings
+                        .filter(booking => {
+                          if (!bookingSearchTerm) return true;
+                          const nume = typeof booking.user?.numeComplet === 'string' ? booking.user.numeComplet.toLowerCase() : '';
+                          return nume.includes(bookingSearchTerm.toLowerCase());
+                        })
+                        .map(booking => (
+                          <tr key={booking.uid}>
+                            <td>{formatDate(booking.date)}</td>
+                            <td>{safeRender(booking.machine)}</td>
+                            <td>{safeRender(booking.start_interval_time)}</td>
+                            <td>{safeRender(booking.final_interval_time)}</td>
+                            <td>
+                              {booking.duration 
+                                ? `${safeRender(booking.duration)} min` 
+                                : `${calculateDuration(booking.start_interval_time, booking.final_interval_time)} min`
+                              }
+                            </td>
+                            <td>{safeRender(booking.user?.numeComplet)}</td>
+                            <td>{safeRender(booking.user?.camera)}</td>
+                            <td>
+                              <input
+                                type="text"
+                                value={reasons[booking.uid] || ''}
+                                onChange={(e) => setReasons({ ...reasons, [booking.uid]: e.target.value })}
+                                placeholder="Motiv anulare..."
+                              />
+                            </td>
+                            <td>
+                              <button
+                                className="btn btn-warning"
+                                onClick={() => deleteBooking(booking.uid)}
+                              >
+                                Anulează
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
               ) : (
                 <div className="admin__table--empty">
                   Nu s-au găsit programări
