@@ -119,6 +119,25 @@ function Navbar() {
     }
   }, [isMobileMenuOpen]);
 
+  // Prevent body scrolling when mobile menu is open
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    const originalTouchAction = document.body.style.touchAction;
+
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = "hidden";
+      document.body.style.touchAction = "none";
+    } else {
+      document.body.style.overflow = originalOverflow || "";
+      document.body.style.touchAction = originalTouchAction || "";
+    }
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.touchAction = originalTouchAction;
+    };
+  }, [isMobileMenuOpen]);
+
   return (
     <nav className="navbar">
       <div className="navbar__container">
