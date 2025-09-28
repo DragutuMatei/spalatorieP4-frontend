@@ -16,82 +16,82 @@ dayjs.extend(isSameOrAfter);
 
 // Helper function to calculate duration between two time strings
 const calculateDuration = (startTime, endTime) => {
-  if (!startTime || !endTime) return 'N/A';
-  
+  if (!startTime || !endTime) return "N/A";
+
   try {
-    const [startHours, startMinutes] = startTime.split(':').map(Number);
-    const [endHours, endMinutes] = endTime.split(':').map(Number);
-    
+    const [startHours, startMinutes] = startTime.split(":").map(Number);
+    const [endHours, endMinutes] = endTime.split(":").map(Number);
+
     const startTotalMinutes = startHours * 60 + startMinutes;
     const endTotalMinutes = endHours * 60 + endMinutes;
-    
+
     const duration = endTotalMinutes - startTotalMinutes;
-    return duration > 0 ? duration : 'N/A';
+    return duration > 0 ? duration : "N/A";
   } catch (error) {
-    console.warn('Error calculating duration:', error);
-    return 'N/A';
+    console.warn("Error calculating duration:", error);
+    return "N/A";
   }
 };
 
 // Helper function to format dates safely
-const formatDate = (dateValue, fallback = 'N/A') => {
+const formatDate = (dateValue, fallback = "N/A") => {
   if (!dateValue) return fallback;
-  
+
   try {
     // Check if it's an ISO string
-    if (typeof dateValue === 'string' && dateValue.includes('T')) {
-      return dayjs(dateValue).format('DD/MM/YYYY');
+    if (typeof dateValue === "string" && dateValue.includes("T")) {
+      return dayjs(dateValue).format("DD/MM/YYYY");
     }
-    
+
     // Check if it's already in DD/MM/YYYY format
-    if (typeof dateValue === 'string' && dateValue.includes('/')) {
+    if (typeof dateValue === "string" && dateValue.includes("/")) {
       return dateValue;
     }
-    
+
     // Try to parse as date
     const parsed = dayjs(dateValue);
     if (parsed.isValid()) {
-      return parsed.format('DD/MM/YYYY');
+      return parsed.format("DD/MM/YYYY");
     }
-    
+
     return fallback;
   } catch (error) {
-    console.warn('Error formatting date:', error);
+    console.warn("Error formatting date:", error);
     return fallback;
   }
 };
 
 // Helper function to safely render Firebase timestamps and other values
-const safeRender = (value, fallback = 'N/A') => {
+const safeRender = (value, fallback = "N/A") => {
   if (value === null || value === undefined) return fallback;
-  
+
   // Check if it's a Firebase timestamp (Firestore format)
-  if (value && typeof value === 'object' && value._seconds !== undefined) {
-    return dayjs.unix(value._seconds).format('DD/MM/YYYY HH:mm');
+  if (value && typeof value === "object" && value._seconds !== undefined) {
+    return dayjs.unix(value._seconds).format("DD/MM/YYYY HH:mm");
   }
-  
+
   // Check if it's a Firebase timestamp (alternative format)
-  if (value && typeof value === 'object' && value.seconds !== undefined) {
-    return dayjs.unix(value.seconds).format('DD/MM/YYYY HH:mm');
+  if (value && typeof value === "object" && value.seconds !== undefined) {
+    return dayjs.unix(value.seconds).format("DD/MM/YYYY HH:mm");
   }
-  
+
   // Check if it's a Date object
   if (value instanceof Date) {
-    return dayjs(value).format('DD/MM/YYYY HH:mm');
+    return dayjs(value).format("DD/MM/YYYY HH:mm");
   }
-  
+
   // Check if it's already a string or number
-  if (typeof value === 'string' || typeof value === 'number') return value;
-  
+  if (typeof value === "string" || typeof value === "number") return value;
+
   // Check if it's a boolean
-  if (typeof value === 'boolean') return value.toString();
-  
+  if (typeof value === "boolean") return value.toString();
+
   // For other objects, try to stringify or return fallback
-  if (typeof value === 'object') {
-    console.warn('Attempting to render object:', value);
+  if (typeof value === "object") {
+    console.warn("Attempting to render object:", value);
     return fallback;
   }
-  
+
   return fallback;
 };
 
@@ -124,10 +124,10 @@ function Admin() {
   // Generate time slots for maintenance
   const generateTimeSlots = () => {
     const slots = [];
-    let time = dayjs().startOf('day').hour(7);
+    let time = dayjs().startOf("day").hour(8);
     while (time.hour() <= 22) {
-      slots.push(time.format('HH:mm'));
-      time = time.add(30, 'minute');
+      slots.push(time.format("HH:mm"));
+      time = time.add(30, "minute");
     }
     slots.pop();
     return slots;
@@ -160,12 +160,12 @@ function Admin() {
   const getBookings = async () => {
     try {
       const rasp = await AXIOS.get("/api/programare");
-      console.log('Bookings response:', rasp.data);
+      console.log("Bookings response:", rasp.data);
       if (rasp.data.success) {
         setBookings(rasp.data.programari || []);
       }
     } catch (error) {
-      console.log('Bookings error:', error);
+      console.log("Bookings error:", error);
       toast_error("Nu s-au putut încărca programările!");
     }
   };
@@ -173,40 +173,44 @@ function Admin() {
   const getMaintenanceIntervals = async () => {
     try {
       const rasp = await AXIOS.get("/api/maintenance");
-      console.log('Maintenance intervals response:', rasp.data);
+      console.log("Maintenance intervals response:", rasp.data);
       if (rasp.data.success) {
         setMaintenanceIntervals(rasp.data.maintenanceIntervals || []);
       }
     } catch (error) {
-      console.log('Maintenance intervals error:', error);
+      console.log("Maintenance intervals error:", error);
       toast_error("Nu s-au putut încărca intervalele de mentenanță!");
     }
   };
 
   const saveSettings = async (key, value) => {
-    console.log('Saving setting:', key, value);
+    console.log("Saving setting:", key, value);
     try {
       const rasp = await AXIOS.post("/api/settings", { key, value });
-      console.log('Settings response:', rasp.data);
+      console.log("Settings response:", rasp.data);
       if (rasp.data.success) {
         // Nu actualizez local - las socket-ul să facă update-ul pentru live data
-        toast_success(`Programările pentru ${key === 'm1Enabled' ? 'M1' : key === 'm2Enabled' ? 'M2' : 'Uscător'} au fost ${value ? 'activate' : 'dezactivate'}!`);
+        toast_success(
+          `Programările pentru ${
+            key === "m1Enabled" ? "M1" : key === "m2Enabled" ? "M2" : "Uscător"
+          } au fost ${value ? "activate" : "dezactivate"}!`
+        );
       }
     } catch (error) {
-      console.log('Settings error:', error);
+      console.log("Settings error:", error);
       toast_error("Eroare la salvarea setărilor!");
     }
   };
 
   const toggleApproval = async (userId, currentApproval) => {
     try {
-      const rasp = await AXIOS.post("/api/users/toggle-approval", { 
-        userId, 
-        validate: currentApproval 
+      const rasp = await AXIOS.post("/api/users/toggle-approval", {
+        userId,
+        validate: currentApproval,
       });
       if (rasp.data.success) {
-        setUsers(users.map(u => u.uid === userId ? rasp.data.user : u));
-        toast_success(`Cont ${!currentApproval ? 'aprobat' : 'dezaprobat'}!`);
+        setUsers(users.map((u) => (u.uid === userId ? rasp.data.user : u)));
+        toast_success(`Cont ${!currentApproval ? "aprobat" : "dezaprobat"}!`);
       }
     } catch (error) {
       console.log(error);
@@ -216,10 +220,13 @@ function Admin() {
 
   const toggleAdmin = async (userId, currentRole) => {
     try {
-      const newRole = currentRole === 'admin' ? 'user' : 'admin';
-      const rasp = await AXIOS.post("/api/users/toggle-role", { userId, role: newRole });
+      const newRole = currentRole === "admin" ? "user" : "admin";
+      const rasp = await AXIOS.post("/api/users/toggle-role", {
+        userId,
+        role: newRole,
+      });
       if (rasp.data.success) {
-        setUsers(users.map(u => u.uid === userId ? rasp.data.user : u));
+        setUsers(users.map((u) => (u.uid === userId ? rasp.data.user : u)));
         toast_success("Rol actualizat!");
       }
     } catch (error) {
@@ -242,7 +249,7 @@ function Admin() {
       });
       if (rasp.data.success) {
         // Remove booking from admin view (it becomes inactive)
-        setBookings(bookings.filter(b => b.uid !== bookingId));
+        setBookings(bookings.filter((b) => b.uid !== bookingId));
         setReasons({ ...reasons, [bookingId]: "" });
         toast_success("Rezervare anulată și notificare trimisă!");
       }
@@ -254,40 +261,40 @@ function Admin() {
 
   const handleMaintenanceSubmit = async () => {
     if (!maintenanceMachine || maintenanceSlots.length === 0) {
-      toast_error('Selectează mașina și cel puțin un slot pentru mentenanță!');
+      toast_error("Selectează mașina și cel puțin un slot pentru mentenanță!");
       return;
     }
 
     try {
-      const dateToSend = dayjs(maintenanceDate).format('DD/MM/YYYY');
-      console.log('Sending maintenance data:', {
+      const dateToSend = dayjs(maintenanceDate).format("DD/MM/YYYY");
+      console.log("Sending maintenance data:", {
         machine: maintenanceMachine,
         date: dateToSend,
         startTime: maintenanceSlots[0],
         endTime: maintenanceSlots[maintenanceSlots.length - 1],
-        slots: maintenanceSlots
-      });
-      
-      const rasp = await AXIOS.post('/api/maintenance', {
-        machine: maintenanceMachine,
-        date: dateToSend,
-        startTime: maintenanceSlots[0],
-        endTime: maintenanceSlots[maintenanceSlots.length - 1],
-        slots: maintenanceSlots
+        slots: maintenanceSlots,
       });
 
-      console.log('Maintenance response:', rasp.data);
-      
+      const rasp = await AXIOS.post("/api/maintenance", {
+        machine: maintenanceMachine,
+        date: dateToSend,
+        startTime: maintenanceSlots[0],
+        endTime: maintenanceSlots[maintenanceSlots.length - 1],
+        slots: maintenanceSlots,
+      });
+
+      console.log("Maintenance response:", rasp.data);
+
       if (rasp.data.success) {
-        toast_success('Interval de mentenanță adăugat și rezervările anulate!');
-        setMaintenanceMachine('');
+        toast_success("Interval de mentenanță adăugat și rezervările anulate!");
+        setMaintenanceMachine("");
         setMaintenanceSlots([]);
         getMaintenanceIntervals();
         getBookings();
       }
     } catch (error) {
-      console.log('Maintenance error:', error);
-      toast_error('Eroare la adăugarea mentenanței!');
+      console.log("Maintenance error:", error);
+      toast_error("Eroare la adăugarea mentenanței!");
     }
   };
 
@@ -295,30 +302,37 @@ function Admin() {
     try {
       const rasp = await AXIOS.delete(`/api/maintenance/${maintenanceId}`);
       if (rasp.data.success) {
-        setMaintenanceIntervals(maintenanceIntervals.filter(m => m.uid !== maintenanceId));
-        toast_success('Interval de mentenanță șters!');
+        setMaintenanceIntervals(
+          maintenanceIntervals.filter((m) => m.uid !== maintenanceId)
+        );
+        toast_success("Interval de mentenanță șters!");
       }
     } catch (error) {
       console.log(error);
-      toast_error('Eroare la ștergerea mentenanței!');
+      toast_error("Eroare la ștergerea mentenanței!");
     }
   };
 
   const toggleMaintenanceSlot = (slot) => {
     if (maintenanceSlots.includes(slot)) {
-      setMaintenanceSlots(maintenanceSlots.filter(s => s !== slot));
+      setMaintenanceSlots(maintenanceSlots.filter((s) => s !== slot));
     } else {
-      const dateStr = dayjs(maintenanceDate).format('YYYY-MM-DD');
-      const newSlots = [...maintenanceSlots, slot].sort((a, b) =>
-        dayjs(`${dateStr} ${a}`).toDate().getTime() -
-        dayjs(`${dateStr} ${b}`).toDate().getTime()
+      const dateStr = dayjs(maintenanceDate).format("YYYY-MM-DD");
+      const newSlots = [...maintenanceSlots, slot].sort(
+        (a, b) =>
+          dayjs(`${dateStr} ${a}`).toDate().getTime() -
+          dayjs(`${dateStr} ${b}`).toDate().getTime()
       );
-      
+
       // Check if slots are consecutive
       for (let i = 1; i < newSlots.length; i++) {
-        if (dayjs(`${dateStr} ${newSlots[i]}`)
-          .diff(dayjs(`${dateStr} ${newSlots[i-1]}`), 'minute') !== 30) {
-          toast_error('Sloturile trebuie să fie consecutive!');
+        if (
+          dayjs(`${dateStr} ${newSlots[i]}`).diff(
+            dayjs(`${dateStr} ${newSlots[i - 1]}`),
+            "minute"
+          ) !== 30
+        ) {
+          toast_error("Sloturile trebuie să fie consecutive!");
           return;
         }
       }
@@ -337,22 +351,31 @@ function Admin() {
 
   useEffect(() => {
     if (socket) {
-      console.log('Socket connected:', socket.connected);
-      
+      console.log("Socket connected:", socket.connected);
+
       const handleSettingsUpdate = (data) => {
-        console.log('Admin received settings update:', data);
-        if (data.action === "update" && data.settings && data.settings.settings) {
-          console.log('Updating admin settings with:', data.settings.settings);
+        console.log("Admin received settings update:", data);
+        if (
+          data.action === "update" &&
+          data.settings &&
+          data.settings.settings
+        ) {
+          console.log("Updating admin settings with:", data.settings.settings);
           // Actualizez toate setările pentru live update
           setSettings(data.settings.settings);
         }
       };
 
       const handleUserUpdate = (data) => {
-        if (data.action === "approval_changed" || data.action === "role_changed") {
-          setUsers(prev => prev.map(u => u.uid === data.userId ? data.user : u));
+        if (
+          data.action === "approval_changed" ||
+          data.action === "role_changed"
+        ) {
+          setUsers((prev) =>
+            prev.map((u) => (u.uid === data.userId ? data.user : u))
+          );
         } else if (data.action === "delete") {
-          setUsers(prev => prev.filter(u => u.uid !== data.userId));
+          setUsers((prev) => prev.filter((u) => u.uid !== data.userId));
         }
       };
 
@@ -361,19 +384,30 @@ function Admin() {
 
       const handleProgramareUpdate = (data) => {
         if (data.action === "create") {
-          setBookings(prev => [data.programare, ...prev]);
+          setBookings((prev) => [data.programare, ...prev]);
         } else if (data.action === "update") {
-          setBookings(prev => prev.map(b => b.uid === data.programare.uid ? data.programare : b));
+          setBookings((prev) =>
+            prev.map((b) =>
+              b.uid === data.programare.uid ? data.programare : b
+            )
+          );
         } else if (data.action === "delete") {
-          setBookings(prev => prev.filter(b => b.uid !== data.programareId));
+          setBookings((prev) =>
+            prev.filter((b) => b.uid !== data.programareId)
+          );
         }
       };
 
       const handleMaintenanceUpdate = (data) => {
         if (data.action === "create") {
-          setMaintenanceIntervals(prev => [data.maintenanceInterval, ...prev]);
+          setMaintenanceIntervals((prev) => [
+            data.maintenanceInterval,
+            ...prev,
+          ]);
         } else if (data.action === "delete") {
-          setMaintenanceIntervals(prev => prev.filter(m => m.uid !== data.maintenanceId));
+          setMaintenanceIntervals((prev) =>
+            prev.filter((m) => m.uid !== data.maintenanceId)
+          );
         }
       };
 
@@ -416,43 +450,63 @@ function Admin() {
   }
 
   // Filter bookings for active ones
-  const currentDate = dayjs().startOf('day');
+  const currentDate = dayjs().startOf("day");
   const displayedBookings = showActiveBookings
-    ? bookings.filter(booking => {
+    ? bookings.filter((booking) => {
         if (!booking.date) return false;
         try {
           // Handle both ISO format and DD/MM/YYYY format
           let bookingDate;
-          if (typeof booking.date === 'string' && booking.date.includes('T')) {
+          if (typeof booking.date === "string" && booking.date.includes("T")) {
             // ISO format
             bookingDate = dayjs(booking.date);
           } else {
             // DD/MM/YYYY format
-            bookingDate = dayjs(booking.date, 'DD/MM/YYYY');
+            bookingDate = dayjs(booking.date, "DD/MM/YYYY");
           }
-          return bookingDate.isValid() && bookingDate.isSameOrAfter(currentDate);
+          return (
+            bookingDate.isValid() && bookingDate.isSameOrAfter(currentDate)
+          );
         } catch (error) {
-          console.warn('Invalid booking date:', booking.date);
+          console.warn("Invalid booking date:", booking.date);
           return false;
         }
       })
     : bookings;
 
-  const filteredUsers = users.filter(user => {
+  const filteredUsers = users.filter((user) => {
     const searchLower = userSearchTerm.toLowerCase();
-    const nume = typeof user.numeComplet === 'string' ? user.numeComplet.toLowerCase() : '';
-    const email = typeof (user.google?.email || user.email) === 'string' ? (user.google?.email || user.email).toLowerCase() : '';
-    const camera = typeof user.camera === 'string' ? user.camera.toLowerCase() : '';
-    
-    return nume.includes(searchLower) || email.includes(searchLower) || camera.includes(searchLower);
+    const nume =
+      typeof user.numeComplet === "string"
+        ? user.numeComplet.toLowerCase()
+        : "";
+    const email =
+      typeof (user.google?.email || user.email) === "string"
+        ? (user.google?.email || user.email).toLowerCase()
+        : "";
+    const camera =
+      typeof user.camera === "string" ? user.camera.toLowerCase() : "";
+
+    return (
+      nume.includes(searchLower) ||
+      email.includes(searchLower) ||
+      camera.includes(searchLower)
+    );
   });
 
   return (
     <div className="admin">
       <div className="container">
         <div className="admin__header">
-            <h1>
-            <svg className="admin-icon" width={30} height={30} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <h1>
+            <svg
+              className="admin-icon"
+              width={30}
+              height={30}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+            >
               <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
             </svg>
             Panou Admin
@@ -462,9 +516,14 @@ function Admin() {
 
         {/* Setări disponibilitate */}
         <div className="admin__section admin__section--full-width">
-          <div 
+          <div
             className="admin__section-header"
-            onClick={() => setExpandedSections(prev => ({...prev, settings: !prev.settings}))}
+            onClick={() =>
+              setExpandedSections((prev) => ({
+                ...prev,
+                settings: !prev.settings,
+              }))
+            }
           >
             <h2>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -472,16 +531,24 @@ function Admin() {
               </svg>
               Setări Disponibilitate
             </h2>
-            <svg 
-              className={`toggle-icon ${expandedSections.settings ? 'toggle-icon--expanded' : ''}`}
-              viewBox="0 0 24 24" 
-              fill="none" 
+            <svg
+              className={`toggle-icon ${
+                expandedSections.settings ? "toggle-icon--expanded" : ""
+              }`}
+              viewBox="0 0 24 24"
+              fill="none"
               stroke="currentColor"
             >
               <path d="M6 9l6 6 6-6" />
             </svg>
           </div>
-          <div className={`admin__section-content ${!expandedSections.settings ? 'admin__section-content--collapsed' : ''}`}>
+          <div
+            className={`admin__section-content ${
+              !expandedSections.settings
+                ? "admin__section-content--collapsed"
+                : ""
+            }`}
+          >
             <div className="admin__settings">
               <div className="admin__settings-item">
                 <div className="label">
@@ -491,10 +558,14 @@ function Admin() {
                     <line x1="12" y1="17" x2="12" y2="21" />
                   </svg>
                   Mașina M1
-                  <span className="status">{settings.m1Enabled ? 'Activat' : 'Dezactivat'}</span>
+                  <span className="status">
+                    {settings.m1Enabled ? "Activat" : "Dezactivat"}
+                  </span>
                 </div>
-                <div 
-                  className={`toggle ${settings.m1Enabled ? 'toggle--active' : ''}`}
+                <div
+                  className={`toggle ${
+                    settings.m1Enabled ? "toggle--active" : ""
+                  }`}
                   onClick={() => saveSettings("m1Enabled", !settings.m1Enabled)}
                 />
               </div>
@@ -507,10 +578,14 @@ function Admin() {
                     <line x1="12" y1="17" x2="12" y2="21" />
                   </svg>
                   Mașina M2
-                  <span className="status">{settings.m2Enabled ? 'Activat' : 'Dezactivat'}</span>
+                  <span className="status">
+                    {settings.m2Enabled ? "Activat" : "Dezactivat"}
+                  </span>
                 </div>
-                <div 
-                  className={`toggle ${settings.m2Enabled ? 'toggle--active' : ''}`}
+                <div
+                  className={`toggle ${
+                    settings.m2Enabled ? "toggle--active" : ""
+                  }`}
                   onClick={() => saveSettings("m2Enabled", !settings.m2Enabled)}
                 />
               </div>
@@ -522,11 +597,17 @@ function Admin() {
                     <path d="M12 1v6m0 6v6" />
                   </svg>
                   Uscător
-                  <span className="status">{settings.dryerEnabled ? 'Activat' : 'Dezactivat'}</span>
+                  <span className="status">
+                    {settings.dryerEnabled ? "Activat" : "Dezactivat"}
+                  </span>
                 </div>
-                <div 
-                  className={`toggle ${settings.dryerEnabled ? 'toggle--active' : ''}`}
-                  onClick={() => saveSettings("dryerEnabled", !settings.dryerEnabled)}
+                <div
+                  className={`toggle ${
+                    settings.dryerEnabled ? "toggle--active" : ""
+                  }`}
+                  onClick={() =>
+                    saveSettings("dryerEnabled", !settings.dryerEnabled)
+                  }
                 />
               </div>
             </div>
@@ -537,9 +618,14 @@ function Admin() {
 
         {/* Mentenanță */}
         <div className="admin__section admin__section--full-width">
-          <div 
+          <div
             className="admin__section-header"
-            onClick={() => setExpandedSections(prev => ({...prev, maintenance: !prev.maintenance}))}
+            onClick={() =>
+              setExpandedSections((prev) => ({
+                ...prev,
+                maintenance: !prev.maintenance,
+              }))
+            }
           >
             <h2>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -547,16 +633,24 @@ function Admin() {
               </svg>
               Mentenanță
             </h2>
-            <svg 
-              className={`toggle-icon ${expandedSections.maintenance ? 'toggle-icon--expanded' : ''}`}
-              viewBox="0 0 24 24" 
-              fill="none" 
+            <svg
+              className={`toggle-icon ${
+                expandedSections.maintenance ? "toggle-icon--expanded" : ""
+              }`}
+              viewBox="0 0 24 24"
+              fill="none"
               stroke="currentColor"
             >
               <path d="M6 9l6 6 6-6" />
             </svg>
           </div>
-          <div className={`admin__section-content ${!expandedSections.maintenance ? 'admin__section-content--collapsed' : ''}`}>
+          <div
+            className={`admin__section-content ${
+              !expandedSections.maintenance
+                ? "admin__section-content--collapsed"
+                : ""
+            }`}
+          >
             <div className="admin__maintenance-form">
               <h3>Adaugă interval mentenanță</h3>
               <div className="admin__maintenance-form-row">
@@ -568,11 +662,11 @@ function Admin() {
                     format="DD/MM/YYYY"
                     minDate={new Date()}
                     style={{
-                      backgroundColor: 'white',
-                      border: '1px solid #ddd',
-                      borderRadius: '4px',
-                      padding: '8px 12px',
-                      width: '100%'
+                      backgroundColor: "white",
+                      border: "1px solid #ddd",
+                      borderRadius: "4px",
+                      padding: "8px 12px",
+                      width: "100%",
                     }}
                     inputClass="date-picker-input"
                   />
@@ -589,49 +683,47 @@ function Admin() {
                     <option value="Uscator">Uscător</option>
                   </select>
                 </div>
-                
               </div>
- 
-                  
-                  <div className="time-slots-grid">
-                    {generateTimeSlots().map((slot) => (
-                      <div
-                        key={slot}
-                        className={`time-slot ${
-                          maintenanceSlots.includes(slot) ? 'time-slot--selected' : ''
-                        }`}
-                        onClick={() => toggleMaintenanceSlot(slot)}
-                      >
-                        {slot}
-                      </div>
-                    ))}
+
+              <div className="time-slots-grid">
+                {generateTimeSlots().map((slot) => (
+                  <div
+                    key={slot}
+                    className={`time-slot ${
+                      maintenanceSlots.includes(slot)
+                        ? "time-slot--selected"
+                        : ""
+                    }`}
+                    onClick={() => toggleMaintenanceSlot(slot)}
+                  >
+                    {slot}
                   </div>
-                  
-                  
+                ))}
+              </div>
             </div>
             <div className="idk">
-
-            <button
-                  className="btn btn-primary"
-                  onClick={handleMaintenanceSubmit}
-                  disabled={!maintenanceMachine || maintenanceSlots.length === 0}
-                  >
-                  Adaugă Mentenanță
-                </button>
-                  </div>
-                <br /><br />
+              <button
+                className="btn btn-primary"
+                onClick={handleMaintenanceSubmit}
+                disabled={!maintenanceMachine || maintenanceSlots.length === 0}
+              >
+                Adaugă Mentenanță
+              </button>
+            </div>
+            <br />
+            <br />
             <div className="admin__table">
               <h3>Intervale de mentenanță</h3>
               {maintenanceIntervals.length > 0 ? (
                 <div className="admin__table-scroll">
                   <table>
                     <thead>
-                    <tr>
-                      <th>Data</th>
-                      <th>Mașina</th>
-                      <th>Interval</th>
-                      <th>Acțiuni</th>
-                    </tr>
+                      <tr>
+                        <th>Data</th>
+                        <th>Mașina</th>
+                        <th>Interval</th>
+                        <th>Acțiuni</th>
+                      </tr>
                     </thead>
                     <tbody>
                       {maintenanceIntervals.map((interval) => (
@@ -639,7 +731,8 @@ function Admin() {
                           <td>{safeRender(interval.date)}</td>
                           <td>{safeRender(interval.machine)}</td>
                           <td>
-                            {safeRender(interval.startTime)} - {safeRender(interval.endTime)}
+                            {safeRender(interval.startTime)} -{" "}
+                            {safeRender(interval.endTime)}
                           </td>
                           <td>
                             <button
@@ -667,9 +760,11 @@ function Admin() {
 
         {/* Utilizatori */}
         <div className="admin__section admin__section--full-width">
-          <div 
+          <div
             className="admin__section-header"
-            onClick={() => setExpandedSections(prev => ({...prev, users: !prev.users}))}
+            onClick={() =>
+              setExpandedSections((prev) => ({ ...prev, users: !prev.users }))
+            }
           >
             <h2>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -678,18 +773,29 @@ function Admin() {
               </svg>
               Utilizatori ({users.length})
             </h2>
-            <svg 
-              className={`toggle-icon ${expandedSections.users ? 'toggle-icon--expanded' : ''}`}
-              viewBox="0 0 24 24" 
-              fill="none" 
+            <svg
+              className={`toggle-icon ${
+                expandedSections.users ? "toggle-icon--expanded" : ""
+              }`}
+              viewBox="0 0 24 24"
+              fill="none"
               stroke="currentColor"
             >
               <path d="M6 9l6 6 6-6" />
             </svg>
           </div>
-          <div className={`admin__section-content ${!expandedSections.users ? 'admin__section-content--collapsed' : ''}`}>
+          <div
+            className={`admin__section-content ${
+              !expandedSections.users ? "admin__section-content--collapsed" : ""
+            }`}
+          >
             <div className="admin__search">
-              <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <svg
+                className="search-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+              >
                 <circle cx="11" cy="11" r="8" />
                 <path d="M21 21l-4.35-4.35" />
               </svg>
@@ -706,38 +812,49 @@ function Admin() {
                 <div className="admin__table-scroll">
                   <table>
                     <thead>
-                    <tr>
-                      <th>Nume</th>
-                      <th>Email</th>
-                      <th>Cameră</th>
-                      <th>Telefon</th>
-                      <th>Aprobat</th>
-                      <th>Rol</th>
-                      <th>Acțiuni</th>
-                    </tr>
+                      <tr>
+                        <th>Nume</th>
+                        <th>Email</th>
+                        <th>Cameră</th>
+                        <th>Telefon</th>
+                        <th>Aprobat</th>
+                        <th>Rol</th>
+                        <th>Acțiuni</th>
+                      </tr>
                     </thead>
                     <tbody>
                       {filteredUsers.map((user) => (
-                        <tr key={user.uid} className={user.validate ? 'approved' : 'pending'}>
+                        <tr
+                          key={user.uid}
+                          className={user.validate ? "approved" : "pending"}
+                        >
                           <td>{safeRender(user.numeComplet)}</td>
-                          <td>{safeRender(user.google?.email || user.email)}</td>
+                          <td>
+                            {safeRender(user.google?.email || user.email)}
+                          </td>
                           <td>{safeRender(user.camera)}</td>
                           <td>{safeRender(user.telefon)}</td>
-                          <td>{user.validate ? 'Da' : 'Nu'}</td>
-                          <td>{safeRender(user.role, 'user')}</td>
+                          <td>{user.validate ? "Da" : "Nu"}</td>
+                          <td>{safeRender(user.role, "user")}</td>
                           <td>
                             <div className="admin__actions">
                               <button
-                                className={`btn ${user.validate ? 'btn-danger' : 'btn-success'}`}
-                                onClick={() => toggleApproval(user.uid, user.validate)}
+                                className={`btn ${
+                                  user.validate ? "btn-danger" : "btn-success"
+                                }`}
+                                onClick={() =>
+                                  toggleApproval(user.uid, user.validate)
+                                }
                               >
-                                {user.validate ? 'Dezactivează' : 'Activează'}
+                                {user.validate ? "Dezactivează" : "Activează"}
                               </button>
                               <button
                                 className="btn btn-primary"
                                 onClick={() => toggleAdmin(user.uid, user.role)}
                               >
-                                {user.role === 'admin' ? 'Remove Admin' : 'Make Admin'}
+                                {user.role === "admin"
+                                  ? "Remove Admin"
+                                  : "Make Admin"}
                               </button>
                             </div>
                           </td>
@@ -759,9 +876,14 @@ function Admin() {
 
         {/* Programări */}
         <div className="admin__section admin__section--full-width">
-          <div 
+          <div
             className="admin__section-header"
-            onClick={() => setExpandedSections(prev => ({...prev, bookings: !prev.bookings}))}
+            onClick={() =>
+              setExpandedSections((prev) => ({
+                ...prev,
+                bookings: !prev.bookings,
+              }))
+            }
           >
             <h2>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -772,16 +894,24 @@ function Admin() {
               </svg>
               Programări ({bookings.length})
             </h2>
-            <svg 
-              className={`toggle-icon ${expandedSections.bookings ? 'toggle-icon--expanded' : ''}`}
-              viewBox="0 0 24 24" 
-              fill="none" 
+            <svg
+              className={`toggle-icon ${
+                expandedSections.bookings ? "toggle-icon--expanded" : ""
+              }`}
+              viewBox="0 0 24 24"
+              fill="none"
               stroke="currentColor"
             >
               <path d="M6 9l6 6 6-6" />
             </svg>
           </div>
-          <div className={`admin__section-content ${!expandedSections.bookings ? 'admin__section-content--collapsed' : ''}`}>
+          <div
+            className={`admin__section-content ${
+              !expandedSections.bookings
+                ? "admin__section-content--collapsed"
+                : ""
+            }`}
+          >
             <div className="admin__filters">
               <input
                 type="text"
@@ -806,44 +936,54 @@ function Admin() {
                 <div className="admin__table-scroll">
                   <table>
                     <thead>
-                    <tr>
-                      <th>Data</th>
-                      <th>Mașină</th>
-                      <th>Oră Început</th>
-                      <th>Oră Sfârșit</th>
-                      <th>Durata</th>
-                      <th>Nume</th>
-                      <th>Cameră</th>
-                      <th>Motiv anulare</th>
-                      <th>Acțiuni</th>
-                    </tr>
+                      <tr>
+                        <th>Data</th>
+                        <th>Mașină</th>
+                        <th>Oră Început</th>
+                        <th>Oră Sfârșit</th>
+                        <th>Durata</th>
+                        <th>Nume</th>
+                        <th>Cameră</th>
+                        <th>Motiv anulare</th>
+                        <th>Acțiuni</th>
+                      </tr>
                     </thead>
                     <tbody>
                       {displayedBookings
-                        .filter(booking => {
+                        .filter((booking) => {
                           if (!bookingSearchTerm) return true;
-                          const nume = typeof booking.user?.numeComplet === 'string' ? booking.user.numeComplet.toLowerCase() : '';
+                          const nume =
+                            typeof booking.user?.numeComplet === "string"
+                              ? booking.user.numeComplet.toLowerCase()
+                              : "";
                           return nume.includes(bookingSearchTerm.toLowerCase());
                         })
-                        .map(booking => (
+                        .map((booking) => (
                           <tr key={booking.uid}>
                             <td>{formatDate(booking.date)}</td>
                             <td>{safeRender(booking.machine)}</td>
                             <td>{safeRender(booking.start_interval_time)}</td>
                             <td>{safeRender(booking.final_interval_time)}</td>
                             <td>
-                              {booking.duration 
-                                ? `${safeRender(booking.duration)} min` 
-                                : `${calculateDuration(booking.start_interval_time, booking.final_interval_time)} min`
-                              }
+                              {booking.duration
+                                ? `${safeRender(booking.duration)} min`
+                                : `${calculateDuration(
+                                    booking.start_interval_time,
+                                    booking.final_interval_time
+                                  )} min`}
                             </td>
                             <td>{safeRender(booking.user?.numeComplet)}</td>
                             <td>{safeRender(booking.user?.camera)}</td>
                             <td>
                               <input
                                 type="text"
-                                value={reasons[booking.uid] || ''}
-                                onChange={(e) => setReasons({ ...reasons, [booking.uid]: e.target.value })}
+                                value={reasons[booking.uid] || ""}
+                                onChange={(e) =>
+                                  setReasons({
+                                    ...reasons,
+                                    [booking.uid]: e.target.value,
+                                  })
+                                }
                                 placeholder="Motiv anulare..."
                               />
                             </td>
@@ -872,7 +1012,6 @@ function Admin() {
         <br />
         <br />
         <br />
-
       </div>
     </div>
   );
