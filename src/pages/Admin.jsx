@@ -235,10 +235,18 @@ function Admin() {
     } catch (error) {
       console.log(error);
       toast_error("Eroare la actualizarea aprobării!");
+    } finally {
+      setUserActionLoading((prev) => {
+        const next = { ...prev };
+        delete next[actionKey];
+        return next;
+      });
     }
   };
 
   const toggleAdmin = async (userId, currentRole) => {
+    const actionKey = `${userId}-role`;
+    setUserActionLoading((prev) => ({ ...prev, [actionKey]: true }));
     try {
       const newRole = currentRole === "admin" ? "user" : "admin";
       const rasp = await AXIOS.post("/api/users/toggle-role", {
@@ -252,6 +260,12 @@ function Admin() {
     } catch (error) {
       console.log(error);
       toast_error("Eroare la actualizarea rolului!");
+    } finally {
+      setUserActionLoading((prev) => {
+        const next = { ...prev };
+        delete next[actionKey];
+        return next;
+      });
     }
   };
 
@@ -262,6 +276,7 @@ function Admin() {
       return;
     }
 
+    setBookingActionLoading((prev) => ({ ...prev, [bookingId]: true }));
     try {
       const rasp = await AXIOS.post("/api/programare/cancel-with-reason", {
         bookingId,
@@ -276,6 +291,12 @@ function Admin() {
     } catch (error) {
       console.log(error);
       toast_error("Eroare la anularea rezervării!");
+    } finally {
+      setBookingActionLoading((prev) => {
+        const next = { ...prev };
+        delete next[bookingId];
+        return next;
+      });
     }
   };
 
@@ -285,6 +306,7 @@ function Admin() {
       return;
     }
 
+    setMaintenanceSubmitting(true);
     try {
       const dateToSend = dayjs(maintenanceDate).format("DD/MM/YYYY");
       console.log("Sending maintenance data:", {
@@ -315,10 +337,13 @@ function Admin() {
     } catch (error) {
       console.log("Maintenance error:", error);
       toast_error("Eroare la adăugarea mentenanței!");
+    } finally {
+      setMaintenanceSubmitting(false);
     }
   };
 
   const deleteMaintenance = async (maintenanceId) => {
+    setMaintenanceDeleting((prev) => ({ ...prev, [maintenanceId]: true }));
     try {
       const rasp = await AXIOS.delete(`/api/maintenance/${maintenanceId}`);
       if (rasp.data.success) {
@@ -330,6 +355,12 @@ function Admin() {
     } catch (error) {
       console.log(error);
       toast_error("Eroare la ștergerea mentenanței!");
+    } finally {
+      setMaintenanceDeleting((prev) => {
+        const next = { ...prev };
+        delete next[maintenanceId];
+        return next;
+      });
     }
   };
 
@@ -752,9 +783,20 @@ function Admin() {
               <button
                 className="btn btn-primary"
                 onClick={handleMaintenanceSubmit}
-                disabled={!maintenanceMachine || maintenanceSlots.length === 0}
+                disabled={
+                  !maintenanceMachine ||
+                  maintenanceSlots.length === 0 ||
+                  maintenanceSubmitting
+                }
               >
-                Adaugă Mentenanță
+                {maintenanceSubmitting ? (
+                  <>
+                    <LoadingSpinner size="sm" inline />
+                    Se salvează...
+                  </>
+                ) : (
+                  "Adaugă Mentenanță"
+                )}
               </button>
             </div>
             <br />
@@ -889,19 +931,42 @@ function Admin() {
                                 className={`btn ${
                                   user.validate ? "btn-danger" : "btn-success"
                                 }`}
-                                onClick={() =>
-                                  toggleApproval(user.uid, user.validate)
-                                }
+                                onClick={() => {
+                                  if (userActionLoading[`${user.uid}-approval`])
+                                    return;
+                                  toggleApproval(user.uid, user.validate);
+                                }}
+                                disabled={!!userActionLoading[`${user.uid}-approval`]}
                               >
-                                {user.validate ? "Dezactivează" : "Activează"}
+                                {userActionLoading[`${user.uid}-approval`] ? (
+                                  <>
+                                    <LoadingSpinner size="sm" inline />
+                                    Se actualizează...
+                                  </>
+                                ) : user.validate ? (
+                                  "Dezactivează"
+                                ) : (
+                                  "Activează"
+                                )}
                               </button>
                               <button
                                 className="btn btn-primary"
-                                onClick={() => toggleAdmin(user.uid, user.role)}
+                                onClick={() => {
+                                  if (userActionLoading[`${user.uid}-role`]) return;
+                                  toggleAdmin(user.uid, user.role);
+                                }}
+                                disabled={!!userActionLoading[`${user.uid}-role`]}
                               >
-                                {user.role === "admin"
-                                  ? "Remove Admin"
-                                  : "Make Admin"}
+                                {userActionLoading[`${user.uid}-role`] ? (
+                                  <>
+                                    <LoadingSpinner size="sm" inline />
+                                    Se actualizează...
+                                  </>
+                                ) : user.role === "admin" ? (
+                                  "Remove Admin"
+                                ) : (
+                                  "Make Admin"
+                                )}
                               </button>
                             </div>
                           </td>

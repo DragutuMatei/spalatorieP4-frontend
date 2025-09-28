@@ -3,6 +3,7 @@ import { useAuth } from "../utils/AuthContext";
 import { toast_success, toast_error, toast_warn } from "../utils/Toasts";
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
+import LoadingSpinner from "../components/LoadingSpinner";
 import "../assets/styles/pages/Profile.scss";
 
 const rooms = (() => {
@@ -314,9 +315,14 @@ function Profile() {
                       className="btn btn-primary"
                       disabled={isSubmitting}
                     >
-                      {isSubmitting
-                        ? "Se salvează..."
-                        : "Salvează Modificările"}
+                      {isSubmitting ? (
+                        <>
+                          <LoadingSpinner size="sm" inline />
+                          Se salvează...
+                        </>
+                      ) : (
+                        "Salvează Modificările"
+                      )}
                     </button>
                   </div>
                 </Form>

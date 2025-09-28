@@ -208,8 +208,8 @@
 //   );
 // }
 
-  // export default MyBooks;
-  
+// export default MyBooks;
+
 import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../utils/AuthContext";
 import AXIOS from "../utils/Axios_config";
@@ -294,7 +294,7 @@ function MyBooks() {
   useEffect(() => {
     socket.on("programare", ({ action, programare, programareId }) => {
       if (!user) return;
-      
+
       switch (action) {
         case "create":
           if (programare.user?.uid === user.uid) {
@@ -463,8 +463,12 @@ END:VCALENDAR
             {isMobile || viewMode === "cards" ? (
               <div className="mybooks__grid">
                 {programari.map((pro) => {
-                  const [h1, m1] = pro.start_interval_time.split(":").map(Number);
-                  const [h2, m2] = pro.final_interval_time.split(":").map(Number);
+                  const [h1, m1] = pro.start_interval_time
+                    .split(":")
+                    .map(Number);
+                  const [h2, m2] = pro.final_interval_time
+                    .split(":")
+                    .map(Number);
                   const start_in_min = h1 * 60 + m1;
                   const final_in_min = h2 * 60 + m2;
                   const durata = final_in_min - start_in_min;
@@ -476,13 +480,19 @@ END:VCALENDAR
                       <div className="mybooks__card-header">
                         <h3>Mașina {pro.machine}</h3>
                         <span
-                          className={`badge badge--${isActive
-                            ? "success"
-                            : isCancelled
-                            ? "error"
-                            : "warning"}`}
+                          className={`badge badge--${
+                            isActive
+                              ? "success"
+                              : isCancelled
+                              ? "error"
+                              : "warning"
+                          }`}
                         >
-                          {isCancelled ? "Anulată" : isActive ? "Activă" : "Necunoscută"}
+                          {isCancelled
+                            ? "Anulată"
+                            : isActive
+                            ? "Activă"
+                            : "Necunoscută"}
                         </span>
                       </div>
 
@@ -495,33 +505,55 @@ END:VCALENDAR
                       <div className="mybooks__card-body">
                         <div className="mybooks__info">
                           <div className="mybooks__info-item">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                            <svg
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                            >
+                              <rect
+                                x="3"
+                                y="4"
+                                width="18"
+                                height="18"
+                                rx="2"
+                                ry="2"
+                              />
                               <line x1="16" y1="2" x2="16" y2="6" />
                               <line x1="8" y1="2" x2="8" y2="6" />
                               <line x1="3" y1="10" x2="21" y2="10" />
                             </svg>
                             <div>
                               <span className="label">Data</span>
-                              <span className="value">{dayjs(pro.date).format("DD/MM/YYYY")}</span>
+                              <span className="value">
+                                {dayjs(pro.date).format("DD/MM/YYYY")}
+                              </span>
                             </div>
                           </div>
 
                           <div className="mybooks__info-item">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <svg
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                            >
                               <circle cx="12" cy="12" r="10" />
                               <polyline points="12,6 12,12 16,14" />
                             </svg>
                             <div>
                               <span className="label">Interval</span>
                               <span className="value">
-                                {pro.start_interval_time} - {pro.final_interval_time}
+                                {pro.start_interval_time} -{" "}
+                                {pro.final_interval_time}
                               </span>
                             </div>
                           </div>
 
                           <div className="mybooks__info-item">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <svg
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                            >
                               <circle cx="12" cy="12" r="10" />
                               <path d="M12 6v6l4 2" />
                             </svg>
@@ -539,15 +571,27 @@ END:VCALENDAR
                             <>
                               <button
                                 className="btn btn-primary"
-                                onClick={() => addToGoogleCalendar(pro, start_in_min, final_in_min)}
+                                onClick={() =>
+                                  addToGoogleCalendar(
+                                    pro,
+                                    start_in_min,
+                                    final_in_min
+                                  )
+                                }
                               >
                                 Google Calendar
                               </button>
                               <button
                                 className="btn btn-success"
-                                onClick={() => downloadIcsFile(pro, start_in_min, final_in_min)}
+                                onClick={() =>
+                                  downloadIcsFile(
+                                    pro,
+                                    start_in_min,
+                                    final_in_min
+                                  )
+                                }
                               >
-                                Download
+                                Download .ics
                               </button>
                             </>
                           )}
@@ -581,18 +625,30 @@ END:VCALENDAR
                     </thead>
                     <tbody>
                       {programari.map((pro) => {
-                        const [h1, m1] = pro.start_interval_time.split(":").map(Number);
-                        const [h2, m2] = pro.final_interval_time.split(":").map(Number);
+                        const [h1, m1] = pro.start_interval_time
+                          .split(":")
+                          .map(Number);
+                        const [h2, m2] = pro.final_interval_time
+                          .split(":")
+                          .map(Number);
                         const start_in_min = h1 * 60 + m1;
                         const final_in_min = h2 * 60 + m2;
                         const durata = final_in_min - start_in_min;
-                        const isActive = pro.active && pro.active.status === true;
-                        const isCancelled = pro.active && pro.active.status === false;
+                        const isActive =
+                          pro.active && pro.active.status === true;
+                        const isCancelled =
+                          pro.active && pro.active.status === false;
 
                         return (
                           <tr
                             key={pro.uid}
-                            className={isCancelled ? "cancelled" : isActive ? "active" : ""}
+                            className={
+                              isCancelled
+                                ? "cancelled"
+                                : isActive
+                                ? "active"
+                                : ""
+                            }
                           >
                             <td>{dayjs(pro.date).format("DD/MM/YYYY")}</td>
                             <td>{pro.machine}</td>
@@ -602,7 +658,11 @@ END:VCALENDAR
                             <td>
                               {isCancelled ? (
                                 <div className="mybooks__status mybooks__status--cancelled">
-                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                  <svg
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                  >
                                     <circle cx="12" cy="12" r="10" />
                                     <line x1="15" y1="9" x2="9" y2="15" />
                                     <line x1="9" y1="9" x2="15" y2="15" />
@@ -611,7 +671,11 @@ END:VCALENDAR
                                 </div>
                               ) : isActive ? (
                                 <div className="mybooks__status mybooks__status--active">
-                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                  <svg
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                  >
                                     <circle cx="12" cy="12" r="10" />
                                     <polyline points="9 12 11 14 15 10" />
                                   </svg>
@@ -619,7 +683,11 @@ END:VCALENDAR
                                 </div>
                               ) : (
                                 <div className="mybooks__status mybooks__status--unknown">
-                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                  <svg
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                  >
                                     <circle cx="12" cy="12" r="10" />
                                     <path d="M9,9h0" />
                                     <path d="M15,9h0" />
@@ -629,20 +697,36 @@ END:VCALENDAR
                                 </div>
                               )}
                             </td>
-                            <td>{isCancelled && pro.active?.message ? pro.active.message : "-"}</td>
+                            <td>
+                              {isCancelled && pro.active?.message
+                                ? pro.active.message
+                                : "-"}
+                            </td>
                             <td>
                               <div className="admin__actions">
                                 {isActive && (
                                   <>
                                     <button
                                       className="btn btn-primary"
-                                      onClick={() => addToGoogleCalendar(pro, start_in_min, final_in_min)}
+                                      onClick={() =>
+                                        addToGoogleCalendar(
+                                          pro,
+                                          start_in_min,
+                                          final_in_min
+                                        )
+                                      }
                                     >
                                       Google Calendar
                                     </button>
                                     <button
                                       className="btn btn-success"
-                                      onClick={() => downloadIcsFile(pro, start_in_min, final_in_min)}
+                                      onClick={() =>
+                                        downloadIcsFile(
+                                          pro,
+                                          start_in_min,
+                                          final_in_min
+                                        )
+                                      }
                                     >
                                       Download
                                     </button>
@@ -768,7 +852,7 @@ export default MyBooks;
 //                             : "Necunoscută"}
 //                         </span>
 //                       </div>
-                      
+
 //                       <div className="mybooks__card-body">
 //                         <div className="mybooks__info">
 //                           <div className="mybooks__info-item">
@@ -783,7 +867,7 @@ export default MyBooks;
 //                               <span className="value">{dayjs(pro.date).format("DD/MM/YYYY")}</span>
 //                             </div>
 //                           </div>
-                          
+
 //                           <div className="mybooks__info-item">
 //                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
 //                               <circle cx="12" cy="12" r="10" />
@@ -796,7 +880,7 @@ export default MyBooks;
 //                               </span>
 //                             </div>
 //                           </div>
-                          
+
 //                           <div className="mybooks__info-item">
 //                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
 //                               <circle cx="12" cy="12" r="10" />
@@ -809,7 +893,7 @@ export default MyBooks;
 //                           </div>
 //                         </div>
 //                       </div>
-                      
+
 //                       <div className="mybooks__card-footer">
 //                         <div className="admin__actions">
 //                           {isActive && (
