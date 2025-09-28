@@ -92,6 +92,10 @@
     font-weight: 600;
     font-size: clamp(0.9rem, 1.6vw, 1.25rem);
 
+    // @include mobile {
+      margin-left:20px;
+    // }
+
     svg {
       height: clamp(26px, calc(var(--navbar-height) - 20px), 40px);
       width: auto;

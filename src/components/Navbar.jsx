@@ -498,17 +498,16 @@ function Navbar() {
                 Admin
               </Link>
             )}
+            <button
+              className="btn btn-secondary navbar__mobile-logout"
+              onClick={async () => {
+                await signUserOut();
+                closeMobileMenu();
+              }}
+            >
+              Logout
+            </button>
           </div>
-
-          <button
-            className="btn btn-secondary navbar__mobile-logout"
-            onClick={async () => {
-              await signUserOut();
-              closeMobileMenu();
-            }}
-          >
-            Logout
-          </button>
         </div>
       )}
 
