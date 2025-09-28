@@ -11,6 +11,7 @@ function Navbar() {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDocsDropdownOpen, setIsDocsDropdownOpen] = useState(false);
+  const [isMobileDocsOpen, setIsMobileDocsOpen] = useState(false);
   const [isNavCompactOpen, setIsNavCompactOpen] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const mobileMenuRef = useRef(null);
@@ -42,6 +43,8 @@ function Navbar() {
 
   const toggleDocsDropdown = () => setIsDocsDropdownOpen((prev) => !prev);
   const closeDocsDropdown = () => setIsDocsDropdownOpen(false);
+  const toggleMobileDocs = () => setIsMobileDocsOpen((prev) => !prev);
+  const closeMobileDocs = () => setIsMobileDocsOpen(false);
 
   const toggleNavCompact = () => setIsNavCompactOpen((prev) => !prev);
   const closeNavCompact = () => setIsNavCompactOpen(false);
@@ -57,6 +60,7 @@ function Navbar() {
       const link = document.createElement("a");
       link.setAttribute("download", filename);
       link.setAttribute("rel", "noopener noreferrer");
+      link.href = documentUrl;
 
       document.body.appendChild(link);
       link.click();
@@ -108,6 +112,12 @@ function Navbar() {
   );
 
   const isActive = (path) => location.pathname === path;
+
+  useEffect(() => {
+    if (!isMobileMenuOpen) {
+      closeMobileDocs();
+    }
+  }, [isMobileMenuOpen]);
 
   return (
     <nav className="navbar">
@@ -233,6 +243,32 @@ function Navbar() {
                   >
                     Regulamente
                   </button>
+                  {isDocsDropdownOpen && (
+                    <div className="navbar__compact-submenu">
+                      {documents.map((doc) => (
+                        <button
+                          key={doc.file}
+                          className="navbar__dropdown-item navbar__dropdown-item--compact"
+                          onClick={() => {
+                            downloadDocument(doc.file);
+                            closeNavCompact();
+                          }}
+                        >
+                          <svg
+                            className="download-icon"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                          >
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7,10 12,15 17,10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                          </svg>
+                          {doc.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -384,16 +420,18 @@ function Navbar() {
             >
               Profil
             </Link>
-            <div className="navbar__medium-dropdown d-none d-md-block">
+            <div className="navbar__mobile-docs">
               <button
-                className="navbar__medium-link navbar__medium-link--dropdown"
-                onClick={toggleDocsDropdown}
-                aria-expanded={isDocsDropdownOpen}
+                className={`navbar__mobile-link navbar__mobile-link--dropdown ${
+                  isMobileDocsOpen ? "navbar__mobile-link--active" : ""
+                }`}
+                onClick={toggleMobileDocs}
+                aria-expanded={isMobileDocsOpen}
               >
                 Regulamente
                 <svg
                   className={`dropdown-icon ${
-                    isDocsDropdownOpen ? "dropdown-icon--open" : ""
+                    isMobileDocsOpen ? "dropdown-icon--open" : ""
                   }`}
                   viewBox="0 0 24 24"
                   fill="none"
@@ -402,15 +440,15 @@ function Navbar() {
                   <polyline points="6,9 12,15 18,9" />
                 </svg>
               </button>
-
-              {isDocsDropdownOpen && (
-                <div className="navbar__medium-dropdown-menu">
-                  {documents.map((doc, index) => (
+              {isMobileDocsOpen && (
+                <div className="navbar__mobile-docs-list">
+                  {documents.map((doc) => (
                     <button
-                      key={index}
-                      className="navbar__medium-dropdown-item"
+                      key={doc.file}
+                      className="navbar__dropdown-item navbar__dropdown-item--mobile"
                       onClick={() => {
                         downloadDocument(doc.file);
+                        closeMobileDocs();
                         closeMobileMenu();
                       }}
                     >

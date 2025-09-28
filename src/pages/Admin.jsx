@@ -8,6 +8,7 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
+import LoadingSpinner from "../components/LoadingSpinner";
 import "../assets/styles/pages/Admin.scss";
 
 dayjs.extend(utc);
@@ -115,6 +116,11 @@ function Admin() {
   const [maintenanceDate, setMaintenanceDate] = useState(dayjs().toDate());
   const [maintenanceMachine, setMaintenanceMachine] = useState("");
   const [maintenanceSlots, setMaintenanceSlots] = useState([]);
+  const [savingSetting, setSavingSetting] = useState(null);
+  const [maintenanceSubmitting, setMaintenanceSubmitting] = useState(false);
+  const [maintenanceDeleting, setMaintenanceDeleting] = useState({});
+  const [userActionLoading, setUserActionLoading] = useState({});
+  const [bookingActionLoading, setBookingActionLoading] = useState({});
   const [expandedSections, setExpandedSections] = useState({
     users: true,
     settings: true,
@@ -190,6 +196,7 @@ function Admin() {
 
   const saveSettings = async (key, value) => {
     console.log("Saving setting:", key, value);
+    setSavingSetting(key);
     try {
       const rasp = await AXIOS.post("/api/settings", { key, value });
       console.log("Settings response:", rasp.data);
@@ -208,10 +215,14 @@ function Admin() {
     } catch (error) {
       console.log("Settings error:", error);
       toast_error("Eroare la salvarea setărilor!");
+    } finally {
+      setSavingSetting(null);
     }
   };
 
   const toggleApproval = async (userId, currentApproval) => {
+    const actionKey = `${userId}-approval`;
+    setUserActionLoading((prev) => ({ ...prev, [actionKey]: true }));
     try {
       const rasp = await AXIOS.post("/api/users/toggle-approval", {
         userId,

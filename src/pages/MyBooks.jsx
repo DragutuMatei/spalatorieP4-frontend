@@ -246,8 +246,12 @@ function MyBooks() {
       }
     } catch (error) {
       console.error("Eroare la incarcarea programarilor:", error);
-      toast_error(error.message || "Eroare la incarcarea programarilor.");
-      setProgramari([]);
+      if (error.response?.status === 404) {
+        setProgramari([]);
+      } else {
+        toast_error(error.message || "Eroare la incarcarea programarilor.");
+        setProgramari([]);
+      }
     } finally {
       setLoading(false);
     }
