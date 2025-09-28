@@ -2164,6 +2164,12 @@ function Home({ userApproved = false }) {
   });
   const [maintenanceIntervals, setMaintenanceIntervals] = useState([]);
   const [selectedBookingDetails, setSelectedBookingDetails] = useState(null);
+  const [blockPastSlotsEnabled, setBlockPastSlotsEnabled] = useState(false);
+
+  const timeZone = "Europe/Bucharest";
+  const now = dayjs().tz(timeZone);
+  const selectedDate = dayjs(value).tz(timeZone);
+  const isSelectedDateToday = selectedDate.isSame(now, "day");
 
   const buildHours = useCallback(() => {
     const startHour = dayjs().startOf("day").hour(8);
@@ -2414,6 +2420,7 @@ function Home({ userApproved = false }) {
         M2: rasp.data.settings.m2Enabled,
         Uscator: rasp.data.settings.dryerEnabled,
       });
+      setBlockPastSlotsEnabled(Boolean(rasp.data.settings.blockPastSlots));
     }
   };
 
@@ -2484,6 +2491,9 @@ function Home({ userApproved = false }) {
           M2: data.settings.settings.m2Enabled,
           Uscator: data.settings.settings.dryerEnabled,
         });
+        setBlockPastSlotsEnabled(
+          Boolean(data.settings.settings.blockPastSlots)
+        );
       }
     });
 
@@ -3006,11 +3016,13 @@ function Home({ userApproved = false }) {
       const newHours = [...old];
       for (let i = 0; i < newHours.length; i++) {
         if (
-          newHours[i].status[selectedMachine].status ===
-          STATUS[selectedMachine].REZERVAT.status
+          selectedMachine &&
+          newHours[i]?.status[selectedMachine]?.status ===
+            STATUS[selectedMachine].REZERVAT.status
         ) {
           newHours[i].status[selectedMachine].status =
             STATUS[selectedMachine].DISPONIBIL.status;
+          newHours[i].status[selectedMachine].by = "";
         }
       }
       return newHours;
@@ -3023,7 +3035,6 @@ function Home({ userApproved = false }) {
   // Funcție pentru a obține numele utilizatorului care a rezervat temporar un slot
   const getTempReservationUserName = (hourIndex, machine) => {
     const currentDate = dayjs(value).format("DD/MM/YYYY");
-
     for (const [userId, reservation] of Object.entries(tempReservations)) {
       if (
         userId === user?.uid ||
@@ -3339,18 +3350,35 @@ function Home({ userApproved = false }) {
                         const isOtherMachineSelected =
                           selectedMachine !== "" && selectedMachine !== m.name;
 
+                        const slotEndDateTime = dayjs
+                          .tz(
+                            `${selectedDate.format("YYYY-MM-DD")} ${hour.final_interval_time}`,
+                            "YYYY-MM-DD HH:mm",
+                            timeZone
+                          )
+                          .subtract(1, "minute");
+                        const isPastSlot =
+                          blockPastSlotsEnabled &&
+                          isSelectedDateToday &&
+                          slotEndDateTime.isBefore(now);
+
                         if (isTempReserved) {
                           rowClass = "table__row--warning";
                           cellContent = (
                             <div style={{ fontSize: "0.75rem" }}>
                               <div style={{ fontWeight: "600" }}>
-                                REZERVAT TEMP
+                                ÎN CURS DE REZERVARE
                               </div>
                               <div style={{ opacity: 0.8 }}>
                                 {tempReserverName}
                               </div>
                             </div>
                           );
+                        } else if (isPastSlot) {
+                          rowClass = "table__row--cancelled";
+                          cellContent = blockPastSlotsEnabled
+                            ? "Trecut"
+                            : cellContent;
                         } else if (isOtherMachineSelected) {
                           rowClass = "table__row--cancelled";
                           cellContent = "Indisponibil";
@@ -3379,7 +3407,8 @@ function Home({ userApproved = false }) {
                           status !== "OCUPAT" &&
                           status !== "MENTENANTA" &&
                           realStates[m.name] === true &&
-                          !isTempReserved;
+                          !isTempReserved &&
+                          !isPastSlot;
 
                         return (
                           <td
@@ -3409,7 +3438,7 @@ function Home({ userApproved = false }) {
                             }}
                             title={
                               isTempReserved
-                                ? `Rezervat temporar de: ${tempReserverName}`
+                                ? `ÎN CURS DE REZERVARE de: ${tempReserverName}`
                                 : hour.status[m.name].by || status
                             }
                           >

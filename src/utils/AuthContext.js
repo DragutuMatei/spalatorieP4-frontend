@@ -138,7 +138,7 @@ export const AuthProvider = ({ children }) => {
     });
   };
   const updateUser = async (uid, userData) => {
-    if (!user) return;
+    if (!user) return null;
     try {
       const res = await AXIOS.post("/api/user", { uid, userData });
       if (res.data.success) {
@@ -146,11 +146,15 @@ export const AuthProvider = ({ children }) => {
           uid: user.uid,
           ...res.data.user,
         });
-      } else {
+      } else if (res.data?.message) {
+        toast_error(res.data.message);
+      } else if (res.data?.error) {
         toast_error(res.data.error);
       }
+      return res.data;
     } catch (error) {
       toast_error("Nu s-a putut updata profilul");
+      return null;
     }
   };
 
@@ -228,6 +232,12 @@ export const AuthProvider = ({ children }) => {
             } else {
               toast_warn("⚠️ Nu mai ești administrator.");
             }
+          } else if (data.action === "reapproval_required") {
+            toast_warn(
+              "Profilul tău a fost actualizat și este în așteptarea reaprobării."
+            );
+          } else if (data.action === "profile_updated") {
+            toast_success("Profil actualizat.");
           }
         }
       };

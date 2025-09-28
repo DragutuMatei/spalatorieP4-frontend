@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../utils/AuthContext";
-import { toast_success, toast_error } from "../utils/Toasts";
+import { toast_success, toast_error, toast_warn } from "../utils/Toasts";
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
 import "../assets/styles/pages/Profile.scss";
@@ -9,13 +9,15 @@ const rooms = (() => {
   const allRooms = [];
   const addRange = (start, end) => {
     for (let num = start; num <= end; num += 1) {
-      const roomNumber = num < 100 ? num.toString().padStart(3, "0") : num.toString();
+      const roomNumber =
+        num < 100 ? num.toString().padStart(3, "0") : num.toString();
       allRooms.push(roomNumber);
     }
   };
 
   addRange(10, 17);
-  addRange(19, 26);
+  allRooms.push("019");
+  addRange(21, 26);
   addRange(113, 130);
   addRange(211, 232);
   addRange(311, 332);
@@ -67,8 +69,26 @@ function Profile() {
     if (!user) return;
 
     try {
-      await updateUser(user.uid, values);
-      toast_success("Profilul a fost actualizat cu succes!");
+      const response = await updateUser(user.uid, values);
+
+      if (!response) {
+        toast_error("Nu s-a putut actualiza profilul.");
+        return;
+      }
+
+      if (response.success) {
+        if (response.requiresReapproval) {
+          toast_warn(
+            "Profil actualizat. Contul tău a fost trimis pentru reaprobare."
+          );
+        } else {
+          toast_success("Profilul a fost actualizat cu succes!");
+        }
+      } else if (response.message) {
+        toast_error(response.message);
+      } else {
+        toast_error("Eroare la actualizarea profilului!");
+      }
     } catch (error) {
       toast_error("Eroare la actualizarea profilului!");
       console.error("Profile update error:", error);
@@ -213,10 +233,17 @@ function Profile() {
                       type="text"
                       placeholder="Introdu numele complet"
                     />
-                    <ErrorMessage name="numeComplet" component="div" className="profile__form-error" />
+                    <ErrorMessage
+                      name="numeComplet"
+                      component="div"
+                      className="profile__form-error"
+                    />
                   </div>
 
-                  <div className="profile__form-group" style={{ position: "relative" }}>
+                  <div
+                    className="profile__form-group"
+                    style={{ position: "relative" }}
+                  >
                     <label>Cameră *</label>
                     <Field
                       name="camera"
@@ -227,11 +254,17 @@ function Profile() {
                         setFieldValue("camera", e.target.value);
                         setShowSuggestions(true);
                       }}
-                      onBlur={() => setTimeout(() => setShowSuggestions(false), 100)}
+                      onBlur={() =>
+                        setTimeout(() => setShowSuggestions(false), 100)
+                      }
                       placeholder="Ex: 101, 102, etc."
                       autoComplete="off"
                     />
-                    <ErrorMessage name="camera" component="div" className="profile__form-error" />
+                    <ErrorMessage
+                      name="camera"
+                      component="div"
+                      className="profile__form-error"
+                    />
                     {showSuggestions && filteredRooms.length > 0 && (
                       <ul className="profile__form-suggestions">
                         {filteredRooms.slice(0, 10).map((room) => (
@@ -257,7 +290,11 @@ function Profile() {
                       type="tel"
                       placeholder="Numărul de telefon (10 cifre)"
                     />
-                    <ErrorMessage name="telefon" component="div" className="profile__form-error" />
+                    <ErrorMessage
+                      name="telefon"
+                      component="div"
+                      className="profile__form-error"
+                    />
                   </div>
 
                   <div className="profile__form-actions">
@@ -277,7 +314,9 @@ function Profile() {
                       className="btn btn-primary"
                       disabled={isSubmitting}
                     >
-                      {isSubmitting ? "Se salvează..." : "Salvează Modificările"}
+                      {isSubmitting
+                        ? "Se salvează..."
+                        : "Salvează Modificările"}
                     </button>
                   </div>
                 </Form>

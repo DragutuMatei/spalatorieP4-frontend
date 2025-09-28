@@ -103,6 +103,7 @@ function Admin() {
     dryerEnabled: true,
     m1Enabled: true,
     m2Enabled: true,
+    blockPastSlots: false,
   });
   const [users, setUsers] = useState([]);
   const [bookings, setBookings] = useState([]);
@@ -137,7 +138,11 @@ function Admin() {
     try {
       const rasp = await AXIOS.get("/api/settings");
       if (rasp.data.success) {
-        setSettings(rasp.data.settings);
+        setSettings((prev) => ({
+          ...prev,
+          ...rasp.data.settings,
+          blockPastSlots: Boolean(rasp.data.settings.blockPastSlots),
+        }));
       }
     } catch (error) {
       console.log(error);
@@ -191,9 +196,13 @@ function Admin() {
       if (rasp.data.success) {
         // Nu actualizez local - las socket-ul să facă update-ul pentru live data
         toast_success(
-          `Programările pentru ${
-            key === "m1Enabled" ? "M1" : key === "m2Enabled" ? "M2" : "Uscător"
-          } au fost ${value ? "activate" : "dezactivate"}!`
+          key === "blockPastSlots"
+            ? `Rezervările în trecut au fost ${
+                value ? "blocate" : "deblocate"
+              }!`
+            : `Programările pentru ${
+                key === "m1Enabled" ? "M1" : key === "m2Enabled" ? "M2" : "Uscător"
+              } au fost ${value ? "activate" : "dezactivate"}!`
         );
       }
     } catch (error) {
@@ -362,7 +371,13 @@ function Admin() {
         ) {
           console.log("Updating admin settings with:", data.settings.settings);
           // Actualizez toate setările pentru live update
-          setSettings(data.settings.settings);
+          setSettings((prev) => ({
+            ...prev,
+            ...data.settings.settings,
+            blockPastSlots: Boolean(
+              data.settings.settings.blockPastSlots
+            ),
+          }));
         }
       };
 
@@ -607,6 +622,27 @@ function Admin() {
                   }`}
                   onClick={() =>
                     saveSettings("dryerEnabled", !settings.dryerEnabled)
+                  }
+                />
+              </div>
+
+              <div className="admin__settings-item">
+                <div className="label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M12 8v4l3 3" />
+                    <circle cx="12" cy="12" r="10" />
+                  </svg>
+                  Blocare ore trecute
+                  <span className="status">
+                    {settings.blockPastSlots ? "Activată" : "Dezactivată"}
+                  </span>
+                </div>
+                <div
+                  className={`toggle ${
+                    settings.blockPastSlots ? "toggle--active" : ""
+                  }`}
+                  onClick={() =>
+                    saveSettings("blockPastSlots", !settings.blockPastSlots)
                   }
                 />
               </div>

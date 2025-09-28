@@ -6,13 +6,15 @@ const rooms = (() => {
   const allRooms = [];
   const addRange = (start, end) => {
     for (let num = start; num <= end; num += 1) {
-      const roomNumber = num < 100 ? num.toString().padStart(3, "0") : num.toString();
+      const roomNumber =
+        num < 100 ? num.toString().padStart(3, "0") : num.toString();
       allRooms.push(roomNumber);
     }
   };
 
   addRange(10, 17);
-  addRange(19, 26);
+  allRooms.push("019");
+  addRange(21, 26);
   addRange(113, 130);
   addRange(211, 232);
   addRange(311, 332);
@@ -28,7 +30,12 @@ const rooms = (() => {
 
 const RegisterForm = ({
   action,
-  initialValues = { numeComplet: "", camera: "", telefon: "", agreeToTerms: false },
+  initialValues = {
+    numeComplet: "",
+    camera: "",
+    telefon: "",
+    agreeToTerms: false,
+  },
 }) => {
   const [inputValue, setInputValue] = useState(initialValues.camera || "");
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -132,10 +139,15 @@ const RegisterForm = ({
             <label className="checkbox-label">
               <Field name="agreeToTerms" type="checkbox" />
               <span className="checkbox-text">
-                Sunt de acord să mi se folosească adresa de email și numărul de telefon pentru notificări legate de rezervări
+                Sunt de acord să mi se folosească adresa de email și numărul de
+                telefon pentru notificări legate de rezervări
               </span>
             </label>
-            <ErrorMessage name="agreeToTerms" component="div" className="error" />
+            <ErrorMessage
+              name="agreeToTerms"
+              component="div"
+              className="error"
+            />
           </div>
 
           <button type="submit">Trimite</button>
