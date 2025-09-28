@@ -2163,6 +2163,7 @@ function Home({ userApproved = false }) {
     Uscator: false,
   });
   const [maintenanceIntervals, setMaintenanceIntervals] = useState([]);
+  const [selectedBookingDetails, setSelectedBookingDetails] = useState(null);
 
   const buildHours = useCallback(() => {
     const startHour = dayjs().startOf("day").hour(8);
@@ -2310,6 +2311,61 @@ function Home({ userApproved = false }) {
 
     return hoursToUpdate;
   };
+
+  const parseTimeToMinutes = (timeStr) => {
+    if (!timeStr || typeof timeStr !== "string") return 0;
+    const [hours, minutes] = timeStr.split(":").map(Number);
+    return hours * 60 + minutes;
+  };
+
+  const findBookingForSlot = useCallback(
+    (slotStart, slotEnd, machineName) => {
+      const slotStartMinutes = parseTimeToMinutes(slotStart);
+      const slotEndMinutes = parseTimeToMinutes(slotEnd);
+      const currentDateStr = dayjs(value).format("DD/MM/YYYY");
+
+      return (
+        usersProgramari.find((booking) => {
+          if (!booking || booking.machine !== machineName) return false;
+          const bookingDateStr = dayjs(booking.date).format("DD/MM/YYYY");
+          if (bookingDateStr !== currentDateStr) return false;
+
+          const bookingStart = parseTimeToMinutes(booking.start_interval_time);
+          const bookingEnd = parseTimeToMinutes(booking.final_interval_time);
+          return (
+            slotStartMinutes >= bookingStart && slotEndMinutes <= bookingEnd
+          );
+        }) || null
+      );
+    },
+    [usersProgramari, value]
+  );
+
+  const handleOccupiedSlotClick = useCallback(
+    (hourInfo, machineName) => {
+      const booking = findBookingForSlot(
+        hourInfo.start_interval_time,
+        hourInfo.final_interval_time,
+        machineName
+      );
+
+      if (!booking) {
+        toast_warn("Nu am găsit detalii pentru această rezervare.");
+        return;
+      }
+
+      setSelectedBookingDetails({
+        machine: machineName,
+        interval: `${booking.start_interval_time} - ${booking.final_interval_time}`,
+        nume: booking.user?.numeComplet || "N/A",
+        camera: booking.user?.camera || "N/A",
+        telefon: booking.user?.telefon || "N/A",
+      });
+    },
+    [findBookingForSlot]
+  );
+
+  const closeBookingModal = () => setSelectedBookingDetails(null);
 
   const getProgramari = async () => {
     try {
@@ -2924,6 +2980,7 @@ function Home({ userApproved = false }) {
         camera: user ? user.camera : "",
         uid: user ? user.uid : "",
         email: user ? user.google?.email : "",
+        telefon: user ? user.telefon : "",
       },
     };
     try {
@@ -3171,47 +3228,49 @@ function Home({ userApproved = false }) {
               reservation.date === currentDate
           );
 
+          if (currentDateReservations.length === 0) {
+            return null;
+          }
+
           return (
-            currentDateReservations.length > 0 && (
-              <div className="alert alert--info">
-                <div className="alert__icon">
-                  <svg
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="12" y1="16" x2="12" y2="12" />
-                    <line x1="12" y1="8" x2="12.01" y2="8" />
-                  </svg>
-                </div>
-                <div className="alert__content">
-                  <h3>Rezervări temporare active pentru {currentDate}</h3>
-                  <div style={{ marginTop: "0.5rem" }}>
-                    {currentDateReservations.map(([userId, reservation]) => (
-                      <div
-                        key={userId}
-                        style={{ marginBottom: "0.5rem", fontSize: "0.875rem" }}
-                      >
-                        <strong>{reservation.userName}</strong> (cam.{" "}
-                        {reservation.camera}) selectează{" "}
-                        <strong>{reservation.machine}</strong> pentru:{" "}
-                        {reservation.intervals.map((interval, idx) => (
-                          <span key={idx}>
-                            {interval.start_interval_time} -{" "}
-                            {interval.final_interval_time}
-                            {idx < reservation.intervals.length - 1 ? ", " : ""}
-                          </span>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
+            <div className="alert alert--info">
+              <div className="alert__icon">
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="16" x2="12" y2="12" />
+                  <line x1="12" y1="8" x2="12.01" y2="8" />
+                </svg>
+              </div>
+              <div className="alert__content">
+                <h3>Rezervări temporare active pentru {currentDate}</h3>
+                <div style={{ marginTop: "0.5rem" }}>
+                  {currentDateReservations.map(([userId, reservation]) => (
+                    <div
+                      key={userId}
+                      style={{ marginBottom: "0.5rem", fontSize: "0.875rem" }}
+                    >
+                      <strong>{reservation.userName}</strong> (cam. {" "}
+                      {reservation.camera}) selectează {" "}
+                      <strong>{reservation.machine}</strong> pentru: {" "}
+                      {reservation.intervals.map((interval, idx) => (
+                        <span key={idx}>
+                          {interval.start_interval_time} - {" "}
+                          {interval.final_interval_time}
+                          {idx < reservation.intervals.length - 1 ? ", " : ""}
+                        </span>
+                      ))}
+                    </div>
+                  ))}
                 </div>
               </div>
-            )
+            </div>
           );
         })()}
 
@@ -3312,6 +3371,10 @@ function Home({ userApproved = false }) {
                             key={m.id}
                             className={rowClass}
                             onClick={() => {
+                              if (status === "OCUPAT") {
+                                handleOccupiedSlotClick(hour, m.name);
+                                return;
+                              }
                               if (
                                 dayjs(value).isBefore(dayjs().startOf("day"))
                               ) {
@@ -3346,6 +3409,43 @@ function Home({ userApproved = false }) {
             </div>
           </div>
         </div>
+
+        {selectedBookingDetails && (
+          <div className="home__booking-modal" role="dialog" aria-modal="true">
+            <div
+              className="home__booking-modal__backdrop"
+              onClick={closeBookingModal}
+            ></div>
+            <div className="home__booking-modal__content">
+              <button
+                type="button"
+                className="home__booking-modal__close"
+                onClick={closeBookingModal}
+                aria-label="Închide"
+              >
+                ×
+              </button>
+              <h3>Detalii rezervare</h3>
+              <div className="home__booking-modal__details">
+                <p>
+                  <span>Mașină:</span> {selectedBookingDetails.machine}
+                </p>
+                <p>
+                  <span>Interval:</span> {selectedBookingDetails.interval}
+                </p>
+                <p>
+                  <span>Nume:</span> {selectedBookingDetails.nume}
+                </p>
+                <p>
+                  <span>Cameră:</span> {selectedBookingDetails.camera}
+                </p>
+                <p>
+                  <span>Telefon:</span> {selectedBookingDetails.telefon || "N/A"}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

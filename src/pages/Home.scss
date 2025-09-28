@@ -393,6 +393,73 @@
   }
 }
 
+.home__booking-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(2px);
+  }
+
+  &__content {
+    position: relative;
+    background: var(--bg-primary);
+    border-radius: $radius-xl;
+    padding: $spacing-xl;
+    width: min(360px, calc(100% - 2 * $spacing-lg));
+    box-shadow: 0 24px 48px rgba(15, 23, 42, 0.15);
+    z-index: 1;
+
+    h3 {
+      margin-bottom: $spacing-lg;
+      color: var(--text-primary);
+      text-align: center;
+    }
+  }
+
+  &__close {
+    position: absolute;
+    top: $spacing-sm;
+    right: $spacing-sm;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+
+    &:hover {
+      color: var(--text-primary);
+    }
+  }
+
+  &__details {
+    display: grid;
+    gap: $spacing-sm;
+    font-size: 0.95rem;
+
+    p {
+      margin: 0;
+      display: flex;
+      justify-content: space-between;
+      color: var(--text-primary);
+
+      span {
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-right: $spacing-sm;
+      }
+    }
+  }
+}
+
 @keyframes pulse {
   0% {
     transform: scale(0.95);
