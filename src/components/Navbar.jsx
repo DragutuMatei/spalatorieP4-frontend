@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import ThemeToggle from "./ThemeToggle";
 import { useAuth } from "../utils/AuthContext";
@@ -10,9 +10,13 @@ function Navbar() {
   const { user, loading, signUserOut } = useAuth();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isDocsDropdownOpen, setIsDocsDropdownOpen] = useState(false);
+  const [isNavCompactOpen, setIsNavCompactOpen] = useState(false);
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const mobileMenuRef = useRef(null);
   const dropdownRef = useRef(null);
+  const compactMenuRef = useRef(null);
+  const accountMenuRef = useRef(null);
 
   // Lista de documente disponibile
   const documents = [
@@ -33,21 +37,17 @@ function Navbar() {
     },
   ];
 
-  const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
-  };
+  const toggleMobileMenu = () => setIsMobileMenuOpen((prev) => !prev);
+  const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
-  const closeMobileMenu = () => {
-    setIsMobileMenuOpen(false);
-  };
+  const toggleDocsDropdown = () => setIsDocsDropdownOpen((prev) => !prev);
+  const closeDocsDropdown = () => setIsDocsDropdownOpen(false);
 
-  const toggleDropdown = () => {
-    setIsDropdownOpen(!isDropdownOpen);
-  };
+  const toggleNavCompact = () => setIsNavCompactOpen((prev) => !prev);
+  const closeNavCompact = () => setIsNavCompactOpen(false);
 
-  const closeDropdown = () => {
-    setIsDropdownOpen(false);
-  };
+  const toggleAccountMenu = () => setIsAccountMenuOpen((prev) => !prev);
+  const closeAccountMenu = () => setIsAccountMenuOpen(false);
 
   const downloadDocument = (filename) => {
     try {
@@ -55,7 +55,6 @@ function Navbar() {
       const documentUrl = `${publicUrl}/assets/docs/${filename}`;
 
       const link = document.createElement("a");
-      link.href = documentUrl;
       link.setAttribute("download", filename);
       link.setAttribute("rel", "noopener noreferrer");
 
@@ -63,7 +62,7 @@ function Navbar() {
       link.click();
       document.body.removeChild(link);
 
-      closeDropdown();
+      closeDocsDropdown();
     } catch (error) {
       console.error("Failed to download document", error);
       window.open(
@@ -77,7 +76,19 @@ function Navbar() {
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        closeDropdown();
+        closeDocsDropdown();
+      }
+      if (
+        compactMenuRef.current &&
+        !compactMenuRef.current.contains(event.target)
+      ) {
+        closeNavCompact();
+      }
+      if (
+        accountMenuRef.current &&
+        !accountMenuRef.current.contains(event.target)
+      ) {
+        closeAccountMenu();
       }
     };
 
@@ -86,6 +97,15 @@ function Navbar() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  const navLinks = useMemo(
+    () => [
+      { label: "Programări", to: "/dashboard" },
+      { label: "Programările mele", to: "/my-books" },
+      { label: "Profil", to: "/profile" },
+    ],
+    []
+  );
 
   const isActive = (path) => location.pathname === path;
 
@@ -102,87 +122,137 @@ function Navbar() {
           <span className="navbar__brand">Spălătorie P4</span>
         </Link>
 
-        {/* Desktop Navigation */}
         {!loading && user && (
-          <div className="navbar__nav d-mobile-none">
-            <Link
-              to="/dashboard"
-              className={`navbar__link ${
-                isActive("/dashboard") ? "navbar__link--active" : ""
-              }`}
-            >
-              Programări
-            </Link>
-            <Link
-              to="/my-books"
-              className={`navbar__link ${
-                isActive("/my-books") ? "navbar__link--active" : ""
-              }`}
-            >
-              Programările mele
-            </Link>
-            <Link
-              to="/profile"
-              className={`navbar__link ${
-                isActive("/profile") ? "navbar__link--active" : ""
-              }`}
-            >
-              Profil
-            </Link>
-            <div className="navbar__dropdown" ref={dropdownRef}>
-              <button
-                className="navbar__link navbar__link--dropdown"
-                onClick={toggleDropdown}
-                aria-expanded={isDropdownOpen}
-              >
-                Regulamente
-                <svg
-                  className={`dropdown-icon ${
-                    isDropdownOpen ? "dropdown-icon--open" : ""
+          <>
+            {/* Full navigation for desktop */}
+            <div className="navbar__nav navbar__nav--full d-xxl-flex d-xl-flex d-lg-flex">
+              {navLinks.map(({ label, to }) => (
+                <Link
+                  key={to}
+                  to={to}
+                  className={`navbar__link ${
+                    isActive(to) ? "navbar__link--active" : ""
                   }`}
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
                 >
+                  {label}
+                </Link>
+              ))}
+              <div className="navbar__dropdown" ref={dropdownRef}>
+                <button
+                  className="navbar__link navbar__link--dropdown"
+                  onClick={toggleDocsDropdown}
+                  aria-expanded={isDocsDropdownOpen}
+                >
+                  Regulamente
+                  <svg
+                    className={`dropdown-icon ${
+                      isDocsDropdownOpen ? "dropdown-icon--open" : ""
+                    }`}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                  >
+                    <polyline points="6,9 12,15 18,9" />
+                  </svg>
+                </button>
+
+                {isDocsDropdownOpen && (
+                  <div className="navbar__dropdown-menu">
+                    {documents.map((doc, index) => (
+                      <button
+                        key={index}
+                        className="navbar__dropdown-item"
+                        onClick={() => downloadDocument(doc.file)}
+                      >
+                        <svg
+                          className="download-icon"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                        >
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                          <polyline points="7,10 12,15 17,10" />
+                          <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                        {doc.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {user.role === "admin" && (
+                <Link
+                  to="/admin"
+                  className={`navbar__link navbar__link--admin ${
+                    isActive("/admin") ? "navbar__link--active" : ""
+                  }`}
+                >
+                  Admin
+                </Link>
+              )}
+            </div>
+
+            {/* Compact dropdown for medium widths */}
+            <div className="navbar__compact d-md-flex d-lg-none" ref={compactMenuRef}>
+              <button
+                className={`navbar__compact-trigger ${
+                  isNavCompactOpen ? "navbar__compact-trigger--open" : ""
+                }`}
+                onClick={toggleNavCompact}
+                aria-expanded={isNavCompactOpen}
+              >
+                Navigare
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                   <polyline points="6,9 12,15 18,9" />
                 </svg>
               </button>
-
-              {isDropdownOpen && (
-                <div className="navbar__dropdown-menu">
-                  {documents.map((doc, index) => (
-                    <button
-                      key={index}
-                      className="navbar__dropdown-item"
-                      onClick={() => downloadDocument(doc.file)}
+              {isNavCompactOpen && (
+                <div className="navbar__compact-menu">
+                  {navLinks.map(({ label, to }) => (
+                    <Link
+                      key={to}
+                      to={to}
+                      className={`navbar__compact-item ${
+                        isActive(to) ? "navbar__compact-item--active" : ""
+                      }`}
+                      onClick={closeNavCompact}
                     >
-                      <svg
-                        className="download-icon"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                      >
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                        <polyline points="7,10 12,15 17,10" />
-                        <line x1="12" y1="15" x2="12" y2="3" />
-                      </svg>
-                      {doc.name}
-                    </button>
+                      {label}
+                    </Link>
                   ))}
+                  <div className="navbar__compact-divider" />
+                  <button
+                    className="navbar__compact-item"
+                    onClick={toggleDocsDropdown}
+                  >
+                    Regulamente
+                  </button>
+                  {user.role === "admin" && (
+                    <Link
+                      to="/admin"
+                      className={`navbar__compact-item ${
+                        isActive("/admin")
+                          ? "navbar__compact-item--active"
+                          : ""
+                      }`}
+                      onClick={closeNavCompact}
+                    >
+                      Admin
+                    </Link>
+                  )}
+                  <button
+                    className="navbar__compact-item navbar__compact-item--logout"
+                    onClick={async () => {
+                      await signUserOut();
+                      closeNavCompact();
+                    }}
+                  >
+                    Logout
+                  </button>
                 </div>
               )}
             </div>
-            {user.role === "admin" && (
-              <Link
-                to="/admin"
-                className={`navbar__link navbar__link--admin ${
-                  isActive("/admin") ? "navbar__link--active" : ""
-                }`}
-              >
-                Admin
-              </Link>
-            )}
-          </div>
+          </>
         )}
 
         {/* Right side actions */}
@@ -192,27 +262,45 @@ function Navbar() {
           {!loading && user ? (
             <>
               {/* User info */}
-              <div className="navbar__user d-mobile-none">
-                <img
-                  src={user.google?.photoURL}
-                  alt={user.numeComplet}
-                  className="navbar__avatar"
-                />
-                <span className="navbar__username">{user.numeComplet}</span>
-                {!user.validate && (
-                  <span className="navbar__status navbar__status--pending">
-                    Pending
+              <div className="navbar__account" ref={accountMenuRef}>
+                <button
+                  className={`navbar__account-trigger ${
+                    isAccountMenuOpen ? "navbar__account-trigger--open" : ""
+                  }`}
+                  onClick={toggleAccountMenu}
+                  aria-expanded={isAccountMenuOpen}
+                >
+                  <img
+                    src={user.google?.photoURL}
+                    alt={user.numeComplet}
+                    className="navbar__avatar"
+                  />
+                  <span className="navbar__username d-lg-flex d-md-none">
+                    {user.numeComplet}
                   </span>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <polyline points="6,9 12,15 18,9" />
+                  </svg>
+                </button>
+                {isAccountMenuOpen && (
+                  <div className="navbar__account-menu">
+                    {!user.validate && (
+                      <span className="navbar__status navbar__status--pending">
+                        Pending
+                      </span>
+                    )}
+                    <button
+                      className="navbar__account-item navbar__account-item--logout"
+                      onClick={async () => {
+                        await signUserOut();
+                        closeAccountMenu();
+                      }}
+                    >
+                      Logout
+                    </button>
+                  </div>
                 )}
               </div>
-
-              {/* Logout button */}
-              <button
-                className="btn btn-secondary d-mobile-none"
-                onClick={async () => await signUserOut()}
-              >
-                Logout
-              </button>
 
               {/* Mobile menu button */}
               <button
@@ -286,16 +374,16 @@ function Navbar() {
             >
               Profil
             </Link>
-            <div className="navbar__mobile-dropdown">
+            <div className="navbar__medium-dropdown d-none d-md-block">
               <button
-                className="navbar__mobile-link navbar__mobile-link--dropdown"
-                onClick={toggleDropdown}
-                aria-expanded={isDropdownOpen}
+                className="navbar__medium-link navbar__medium-link--dropdown"
+                onClick={toggleDocsDropdown}
+                aria-expanded={isDocsDropdownOpen}
               >
                 Regulamente
                 <svg
                   className={`dropdown-icon ${
-                    isDropdownOpen ? "dropdown-icon--open" : ""
+                    isDocsDropdownOpen ? "dropdown-icon--open" : ""
                   }`}
                   viewBox="0 0 24 24"
                   fill="none"
@@ -305,12 +393,12 @@ function Navbar() {
                 </svg>
               </button>
 
-              {isDropdownOpen && (
-                <div className="navbar__mobile-dropdown-menu">
+              {isDocsDropdownOpen && (
+                <div className="navbar__medium-dropdown-menu">
                   {documents.map((doc, index) => (
                     <button
                       key={index}
-                      className="navbar__mobile-dropdown-item"
+                      className="navbar__medium-dropdown-item"
                       onClick={() => {
                         downloadDocument(doc.file);
                         closeMobileMenu();

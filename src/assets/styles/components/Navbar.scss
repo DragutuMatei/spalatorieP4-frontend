@@ -28,156 +28,244 @@
 .d-desktop-none { @include desktop { display: none !important; } }
 
 .navbar {
-  background-color: var(--bg-primary);
   border-bottom: 1px solid var(--border-color);
   position: sticky;
   top: 0;
   z-index: $z-sticky;
   @include theme-transition;
-  
+  --navbar-height: 60px;
+  --navbar-padding-x: $spacing-sm;
+
+  @include xs {
+    --navbar-height: 50px;
+    --navbar-padding-x: $spacing-xs;
+  }
+
+  @include sm {
+    --navbar-height: 52px;
+    --navbar-padding-x: $spacing-sm;
+  }
+
+  @include md {
+    --navbar-height: 56px;
+    --navbar-padding-x: $spacing-sm;
+  }
+
+  @include lg {
+    --navbar-height: 58px;
+    --navbar-padding-x: $spacing-md;
+  }
+
+  @include xl {
+    --navbar-height: 60px;
+    --navbar-padding-x: $spacing-lg;
+  }
+
+  @include xxl {
+    --navbar-height: 64px;
+    --navbar-padding-x: $spacing-xl;
+  }
+
+  @include mobile {
+    --navbar-height: 52px;
+    --navbar-padding-x: $spacing-sm;
+  }
+
   &__container {
     max-width: $xxl;
     margin: 0 auto;
-    padding: 0 $spacing-md;
+    padding: 0 var(--navbar-padding-x);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    height: 80px;
-    
-    // Extra small phones (< 320px)
-    @include xs {
-      padding: 0 $spacing-xs;
-      height: 60px;
-    }
-    
-    // Small phones (320px - 479px)
-    @include sm {
-      padding: 0 $spacing-sm;
-      height: 65px;
-    }
-    
-    // Medium tablets (480px - 767px)
-    @include md {
-      padding: 0 $spacing-md;
-      height: 70px;
-    }
-    
-    // Large laptops (768px - 1023px)
-    @include lg {
-      padding: 0 $spacing-lg;
-      height: 75px;
-    }
-    
-    // Extra large desktop (1024px - 1279px)
-    @include xl {
-      padding: 0 $spacing-xl;
-      height: 80px;
-    }
-    
-    // Extra extra large (1280px+)
-    @include xxl {
-      padding: 0 $spacing-2xl;
-      height: 85px;
-    }
-    
-    // Legacy mobile support
-    @include mobile {
-      padding: 0 $spacing-sm;
-      height: 65px;
-    }
+    height: var(--navbar-height);
+    gap: clamp($spacing-sm, 2vw, $spacing-lg);
   }
-  
+
   &__logo {
     display: flex;
     align-items: center;
-    gap: $spacing-lg;
+    gap: clamp($spacing-xs * 1.5, 2vw, $spacing-lg);
     text-decoration: none;
     color: var(--text-primary);
     font-weight: 600;
-    font-size: 1rem;
-    
-    // Extra small phones
-    @include xs {
-      gap: $spacing-xs;
-      font-size: 0.875rem;
-    }
-    
-    // Small phones
-    @include sm {
-      gap: $spacing-sm;
-      font-size: 1rem;
-    }
-    
-    // Medium tablets
-    @include md {
-      gap: $spacing-md;
-      font-size: 1.125rem;
-    }
-    
-    // Large laptops
-    @include lg {
-      gap: $spacing-lg;
-      font-size: 1.25rem;
-    }
-    
-    // Extra large desktop
-    @include xl {
-      gap: $spacing-lg;
-      font-size: 1.375rem;
-    }
-    
-    // Extra extra large
-    @include xxl {
-      gap: $spacing-xl;
-      font-size: 1.5rem;
-    }
-    
+    font-size: clamp(0.9rem, 1.6vw, 1.25rem);
+
     svg {
-      height: 45px;
+      height: clamp(26px, calc(var(--navbar-height) - 20px), 40px);
       width: auto;
-      padding:3px;
-      
-      // Extra small phones
-      @include xs {
-        height: 30px;
-      }
-      
-      // Small phones
-      @include sm {
-        height: 35px;
-      }
-      
-      // Medium tablets
-      @include md {
-        height: 30px;
-      }
-      
-      // Large laptops
-      @include lg {
-        height: 35px;
-      }
-      
-      // Extra large desktop
-      @include xl {
-        height: 40px;
-      }
-      
-      // Extra extra large
-      @include xxl {
-        height: 45px;
-      }
-      
-      // Legacy mobile support
-      @include mobile {
-        height: 35px;
-      }
+      padding: 3px;
     }
-    
+
     &:hover {
       color: var(--primary-blue);
     }
   }
-  
+
+  &__compact {
+    position: relative;
+    display: none;
+
+    @include md {
+      display: block;
+    }
+
+    @include lg-up {
+      display: none;
+    }
+
+    &-trigger {
+      display: flex;
+      align-items: center;
+      gap: $spacing-xs;
+      padding: $spacing-xs $spacing-sm;
+      border-radius: $radius-md;
+      border: 1px solid var(--border-color);
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all $transition-fast;
+
+      svg {
+        width: 16px;
+        height: 16px;
+        transition: transform $transition-fast;
+      }
+
+      &--open {
+        svg {
+          transform: rotate(180deg);
+        }
+      }
+
+      &:hover {
+        background-color: var(--bg-secondary-soft, rgba(255, 255, 255, 0.08));
+      }
+    }
+
+    &-menu {
+      position: absolute;
+      top: calc(100% + $spacing-xs);
+      right: 0;
+      min-width: 220px;
+      border-radius: $radius-lg;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+      padding: $spacing-xs 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      z-index: $z-dropdown;
+    }
+
+    &-item {
+      padding: $spacing-sm $spacing-lg;
+      border: none;
+      background: transparent;
+      text-align: left;
+      color: var(--text-primary);
+      font-weight: 500;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: $spacing-sm;
+      cursor: pointer;
+      transition: all $transition-fast;
+      text-decoration: none;
+
+      &:hover,
+      &--active {
+        background: var(--bg-secondary);
+        color: var(--primary-blue);
+      }
+
+      &--logout {
+        color: var(--error);
+      }
+    }
+
+    &-divider {
+      height: 1px;
+      margin: $spacing-xs 0;
+      background: var(--border-color);
+      opacity: 0.2;
+    }
+  }
+
+  &__account {
+    position: relative;
+    display: flex;
+    align-items: center;
+
+    &-trigger {
+      display: flex;
+      align-items: center;
+      gap: $spacing-xs;
+      background: none;
+      border: 1px solid transparent;
+      border-radius: $radius-md;
+      padding: $spacing-xs $spacing-sm;
+      cursor: pointer;
+      color: var(--text-primary);
+      transition: all $transition-fast;
+
+      svg {
+        width: 16px;
+        height: 16px;
+        transition: transform $transition-fast;
+      }
+
+      &--open {
+        border-color: var(--border-color);
+
+        svg {
+          transform: rotate(180deg);
+        }
+      }
+
+      &:hover {
+        background-color: var(--bg-secondary);
+      }
+    }
+
+    &-menu {
+      position: absolute;
+      top: calc(100% + $spacing-xs);
+      right: 0;
+      width: 200px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: $radius-lg;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+      padding: $spacing-xs 0;
+      z-index: $z-dropdown;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    &-item {
+      padding: $spacing-sm $spacing-md;
+      background: none;
+      border: none;
+      text-align: left;
+      color: var(--text-primary);
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all $transition-fast;
+
+      &:hover {
+        background: var(--bg-secondary);
+      }
+
+      &--logout {
+        color: var(--error);
+      }
+    }
+  }
+
   &__brand {
     // Hide brand text on very small screens
     @include xs {
@@ -202,7 +290,7 @@
   &__nav {
     display: flex;
     align-items: center;
-    gap: $spacing-lg;
+    gap: clamp($spacing-sm, 3vw, $spacing-lg);
     
     // Extra small phones - hide completely, use mobile menu
     @include xs {
@@ -658,55 +746,11 @@
   }
   
   &__avatar {
-    width: 36px;
-    height: 36px;
+    width: clamp(24px, calc(var(--navbar-height) - 24px), 36px);
+    height: clamp(24px, calc(var(--navbar-height) - 24px), 36px);
     border-radius: 50%;
     border: 2px solid var(--border-color);
     object-fit: cover;
-    
-    // Extra small phones
-    @include xs {
-      width: 28px;
-      height: 28px;
-      border-width: 1px;
-    }
-    
-    // Small phones
-    @include sm {
-      width: 30px;
-      height: 30px;
-      border-width: 1px;
-    }
-    
-    // Medium tablets
-    @include md {
-      width: 32px;
-      height: 32px;
-    }
-    
-    // Large laptops
-    @include lg {
-      width: 36px;
-      height: 36px;
-    }
-    
-    // Extra large desktop
-    @include xl {
-      width: 40px;
-      height: 40px;
-    }
-    
-    // Extra extra large
-    @include xxl {
-      width: 44px;
-      height: 44px;
-    }
-    
-    // Legacy mobile support
-    @include mobile {
-      width: 30px;
-      height: 30px;
-    }
   }
   
   &__username {
@@ -847,10 +891,10 @@
   
   &__mobile {
     position: fixed;
-    top: 70px;
+    top: var(--navbar-height);
     right: 0;
     width: 280px;
-    height: calc(100vh - 70px);
+    height: calc(100vh - var(--navbar-height));
     background-color: var(--bg-primary);
     border-left: 1px solid var(--border-color);
     transform: translateX(100%);
@@ -862,11 +906,6 @@
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
     @include theme-transition;
-    
-    @include desktop {
-      top: 80px;
-      height: calc(100vh - 80px);
-    }
     
     &--open {
       transform: translateX(0);
@@ -974,54 +1013,12 @@
   
   &__overlay {
     position: fixed;
-    top: 70px;
+    top: var(--navbar-height);
     left: 0;
     width: 100vw;
-    height: calc(100vh - 70px);
+    height: calc(100vh - var(--navbar-height));
     background-color: rgba(0, 0, 0, 0.5);
     z-index: $z-modal-backdrop;
-    
-    // Extra small phones
-    @include xs {
-      top: 60px;
-      height: calc(100vh - 60px);
-    }
-    
-    // Small phones
-    @include sm {
-      top: 65px;
-      height: calc(100vh - 65px);
-    }
-    
-    // Medium tablets
-    @include md {
-      top: 70px;
-      height: calc(100vh - 70px);
-    }
-    
-    // Large laptops
-    @include lg {
-      top: 75px;
-      height: calc(100vh - 75px);
-    }
-    
-    // Extra large desktop
-    @include xl {
-      top: 80px;
-      height: calc(100vh - 80px);
-    }
-    
-    // Extra extra large
-    @include xxl {
-      top: 85px;
-      height: calc(100vh - 85px);
-    }
-    
-    // Legacy desktop support
-    @include desktop {
-      top: 80px;
-      height: calc(100vh - 80px);
-    }
     
     @include mobile {
       display: none;
