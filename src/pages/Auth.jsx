@@ -6,6 +6,7 @@ import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
 import "../assets/styles/pages/Auth.scss";
 import { Link, useNavigate } from "react-router-dom";
+import { useTheme } from "../contexts/ThemeContext";
 
 const rooms = (() => {
   const allRooms = [];
@@ -36,6 +37,7 @@ const rooms = (() => {
 function Auth() {
   const { user, loading, register, signInWithGoogle, signUserOut } = useAuth();
   const navigate = useNavigate();
+  const { theme } = useTheme();
   const [showRegister, setShowRegister] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [inputValue, setInputValue] = useState("");
@@ -109,7 +111,7 @@ function Auth() {
       <div className="auth__container">
         <div className="auth__header">
           <div className="auth__header-logo">
-            <Logo />
+            <Logo color={theme === "dark" ? "#FFFFFF" : "#050505"} />
           </div>
           <h1>
             {user

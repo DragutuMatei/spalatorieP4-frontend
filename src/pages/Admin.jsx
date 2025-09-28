@@ -152,7 +152,9 @@ function Admin() {
       }
     } catch (error) {
       console.log(error);
-      toast_error("Nu s-au putut încărca setările!");
+      if (error?.response?.status !== 404) {
+        toast_error("Nu s-au putut încărca setările!");
+      }
     }
   };
 
@@ -164,7 +166,10 @@ function Admin() {
       }
     } catch (error) {
       console.log(error);
-      toast_error("Nu s-au putut încărca utilizatorii!");
+      if (error?.response?.status !== 404) {
+        toast_error("Nu s-au putut încărca utilizatorii!");
+      }
+      setUsers([]);
     }
   };
 
@@ -177,7 +182,10 @@ function Admin() {
       }
     } catch (error) {
       console.log("Bookings error:", error);
-      toast_error("Nu s-au putut încărca programările!");
+      if (error?.response?.status !== 404) {
+        toast_error("Nu s-au putut încărca programările!");
+      }
+      setBookings([]);
     }
   };
 
@@ -190,7 +198,10 @@ function Admin() {
       }
     } catch (error) {
       console.log("Maintenance intervals error:", error);
-      toast_error("Nu s-au putut încărca intervalele de mentenanță!");
+      if (error?.response?.status !== 404) {
+        toast_error("Nu s-au putut încărca intervalele de mentenanță!");
+      }
+      setMaintenanceIntervals([]);
     }
   };
 

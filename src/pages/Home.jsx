@@ -2377,7 +2377,7 @@ function Home({ userApproved = false }) {
     try {
       const rasp = await AXIOS.get(`/api/programare`);
       if (rasp.data.success) {
-        const validProgramari = rasp.data.programari.filter(
+        const validProgramari = (rasp.data.programari || []).filter(
           (pr) =>
             pr.active &&
             pr.active.status === true &&
@@ -2388,39 +2388,79 @@ function Home({ userApproved = false }) {
             pr.user
         );
         setUsersProgramari(validProgramari);
-      } else {
-        toast_error(rasp.data.message || "Eroare la incarcarea programarilor.");
+      } else if (rasp.data.status === 404) {
         setUsersProgramari([]);
+        return;
+      } else {
+        setUsersProgramari([]);
+        toast_error(rasp.data.message || "Eroare la incarcarea programarilor.");
       }
     } catch (error) {
+      if (error?.response?.status === 404) {
+        setUsersProgramari([]);
+        return;
+      }
       console.error("Eroare la incarcarea programarilor:", error);
       toast_error(error.message || "Eroare la incarcarea programarilor.");
-      setUsersProgramari([]);
     }
   };
 
-  // Funcție pentru a obține toate rezervările temporare active de la server
   const getTempReservations = async () => {
     try {
       const response = await AXIOS.get("/api/temp-reservations");
       if (response.data.success) {
         setTempReservations(response.data.tempReservations || {});
+      }else {
+        setTempReservations({});
+        toast_error(response.data.message || "Eroare la incarcarea rezervarilor temporare.");
       }
     } catch (error) {
+      if (error?.response?.status === 404) {
+        setTempReservations({});
+        return;
+      }
       console.error("Error loading temp reservations:", error);
     }
   };
 
   const getSettings = async () => {
-    const rasp = await AXIOS.get("/api/settings");
-    if (rasp.data.success) {
-      console.log("llll, ", rasp.data);
-      setRealStates({
-        M1: rasp.data.settings.m1Enabled,
-        M2: rasp.data.settings.m2Enabled,
-        Uscator: rasp.data.settings.dryerEnabled,
-      });
-      setBlockPastSlotsEnabled(Boolean(rasp.data.settings.blockPastSlots));
+    try {
+      const rasp = await AXIOS.get("/api/settings");
+      if (rasp.data.success) {
+        setRealStates({
+          M1: rasp.data.settings.m1Enabled,
+          M2: rasp.data.settings.m2Enabled,
+          Uscator: rasp.data.settings.dryerEnabled,
+        });
+        setBlockPastSlotsEnabled(Boolean(rasp.data.settings.blockPastSlots));
+      } else if (rasp.data.status === 404) {
+        setRealStates({
+          M1: false,
+          M2: false,
+          Uscator: false,
+        });
+        setBlockPastSlotsEnabled(false);
+        return;
+      } else {
+        setRealStates({
+          M1: false,
+          M2: false,
+          Uscator: false,
+        });
+        setBlockPastSlotsEnabled(false);
+        toast_error(rasp.data.message || "Eroare la incarcarea setarilor.");
+      }
+    } catch (error) {
+      if (error?.response?.status === 404) {
+        setRealStates({
+          M1: false,
+          M2: false,
+          Uscator: false,
+        });
+        setBlockPastSlotsEnabled(false);
+        return;
+      }
+      console.error("Error fetching settings:", error);
     }
   };
 
@@ -2429,13 +2469,20 @@ function Home({ userApproved = false }) {
       const rasp = await AXIOS.get("/api/maintenance");
       if (rasp.data.success) {
         setMaintenanceIntervals(rasp.data.maintenanceIntervals);
+      } else {
+        setMaintenanceIntervals([]);
+        toast_error(rasp.data.message || "Eroare la incarcarea intervalilor de mentenanță.");
       }
     } catch (error) {
+      if (error?.response?.status === 404) {
+        setMaintenanceIntervals([]);
+        return;
+      }
       console.error("Error fetching maintenance intervals:", error);
     }
   };
   useEffect(() => {
-    getSettings();
+    getSettings(); 
     getProgramari();
     getMaintenanceIntervals();
     // Obține rezervările temporare existente când se încarcă componenta

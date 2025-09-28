@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth,browserLocalPersistence, inMemoryPersistence } from "firebase/auth";
 import { getDatabase } from "firebase/database";
 
 // Initialize Firebase
@@ -15,4 +15,28 @@ const app = initializeApp({
 
 const google_auth = getAuth(app);
 const db = getDatabase(app);
+
+
+function isSessionStorageAvailable() {
+  try {
+    const test = "__test__";
+    sessionStorage.setItem(test, test);
+    sessionStorage.removeItem(test);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+const storage = isSessionStorageAvailable() ? sessionStorage : {
+  _data: {},
+  setItem(key, val) { this._data[key] = String(val); },
+  getItem(key) { return this._data[key] || null; },
+  removeItem(key) { delete this._data[key]; },
+};
+
+google_auth.setPersistence(
+  isSessionStorageAvailable() ? browserLocalPersistence : inMemoryPersistence
+);
+
 export { db, app, google_auth };

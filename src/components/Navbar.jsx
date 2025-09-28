@@ -5,10 +5,12 @@ import { useAuth } from "../utils/AuthContext";
 import Logo from "./Logo";
 import "../assets/styles/components/Navbar.scss";
 import "./NavbarDropdown.scss";
+import { useTheme } from "../contexts/ThemeContext";
 
 function Navbar() {
   const { user, loading, signUserOut } = useAuth();
   const location = useLocation();
+  const { theme } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDocsDropdownOpen, setIsDocsDropdownOpen] = useState(false);
   const [isMobileDocsOpen, setIsMobileDocsOpen] = useState(false);
@@ -150,7 +152,7 @@ function Navbar() {
           className="navbar__logo"
           onClick={closeMobileMenu}
         >
-          <Logo />
+          <Logo color={theme === "dark" ? "#FFFFFF" : "#050505"} />
           <span className="navbar__brand">Spălătorie P4</span>
         </Link>
 
