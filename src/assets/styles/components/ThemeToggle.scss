@@ -1,0 +1,45 @@
+@import '../variables.scss';
+
+.theme-toggle {
+  background-color: var(--bg-secondary);
+  border: 2px solid var(--border-color);
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all $transition-fast;
+  color: var(--text-primary);
+  
+  &:hover {
+    background-color: var(--primary-blue);
+    color: white;
+    transform: scale(1.05);
+  }
+  
+  &:active {
+    transform: scale(0.95);
+  }
+  
+  @include mobile {
+    width: 40px;
+    height: 40px;
+  }
+  
+  &__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform $transition-fast;
+    
+    svg {
+      transition: all $transition-fast;
+    }
+  }
+  
+  &:hover &__icon {
+    transform: rotate(15deg);
+  }
+}

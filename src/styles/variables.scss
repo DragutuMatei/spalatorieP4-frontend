@@ -1,0 +1,122 @@
+// Color Palette
+$primary-dark: #000830;
+$primary-green: #26A544;
+$primary-gray: #2F2F2F;
+$primary-blue: #3C60B3;
+$primary-orange: #F78F1E;
+
+// Adjacent colors for better contrast
+$primary-dark-light: #1a1f4a;
+$primary-green-light: #34d058;
+$primary-green-dark: #1f8a37;
+$primary-gray-light: #4a4a4a;
+$primary-blue-light: #4c70d6;
+$primary-blue-dark: #2d4a8a;
+$primary-orange-light: #ffa726;
+$primary-orange-dark: #e67e22;
+
+// Light Theme Colors
+$light-bg-primary: #ffffff;
+$light-bg-secondary: #f8fafc;
+$light-bg-tertiary: #f1f5f9;
+$light-bg-quaternary: #e2e8f0;
+$light-text-primary: $primary-dark;
+$light-text-secondary: #64748b;
+$light-text-muted: #94a3b8;
+$light-border: #e2e8f0;
+$light-border-strong: #cbd5e1;
+$light-shadow: rgba(0, 8, 48, 0.1);
+
+// Dark Theme Colors
+$dark-bg-primary: #0f172a;
+$dark-bg-secondary: #1e293b;
+$dark-bg-tertiary: #334155;
+$dark-bg-quaternary: #475569;
+$dark-text-primary: #f8fafc;
+$dark-text-secondary: #cbd5e1;
+$dark-text-muted: #94a3b8;
+$dark-border: #475569;
+$dark-border-strong: #64748b;
+$dark-shadow: rgba(0, 0, 0, 0.3);
+
+// Status Colors
+$success: $primary-green;
+$warning: $primary-orange;
+$error: #ef4444;
+$info: $primary-blue;
+
+// Breakpoints
+$mobile: 480px;
+$tablet: 768px;
+$desktop: 1024px;
+$large: 1280px;
+
+// Spacing
+$spacing-xs: 0.25rem;
+$spacing-sm: 0.5rem;
+$spacing-md: 1rem;
+$spacing-lg: 1.5rem;
+$spacing-xl: 2rem;
+$spacing-2xl: 3rem;
+
+// Border Radius
+$radius-sm: 0.25rem;
+$radius-md: 0.5rem;
+$radius-lg: 0.75rem;
+$radius-xl: 1rem;
+
+// Transitions
+$transition-fast: 0.15s ease-in-out;
+$transition-normal: 0.3s ease-in-out;
+$transition-slow: 0.5s ease-in-out;
+
+// Z-index
+$z-dropdown: 1000;
+$z-sticky: 1020;
+$z-fixed: 1030;
+$z-modal-backdrop: 1040;
+$z-modal: 1050;
+$z-popover: 1060;
+$z-tooltip: 1070;
+
+// Mixins
+@mixin mobile {
+  @media (max-width: #{$mobile - 1px}) {
+    @content;
+  }
+}
+
+@mixin tablet {
+  @media (min-width: #{$mobile}) and (max-width: #{$tablet - 1px}) {
+    @content;
+  }
+}
+
+@mixin desktop {
+  @media (min-width: #{$tablet}) {
+    @content;
+  }
+}
+
+@mixin large {
+  @media (min-width: #{$desktop}) {
+    @content;
+  }
+}
+
+@mixin theme-transition {
+  transition: background-color $transition-normal, color $transition-normal, border-color $transition-normal;
+}
+
+@mixin card-shadow {
+  box-shadow: 0 1px 3px 0 var(--shadow-color), 0 1px 2px 0 var(--shadow-color);
+}
+
+@mixin hover-lift {
+  transition: transform $transition-fast, box-shadow $transition-fast;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px 0 var(--shadow-color), 0 2px 4px 0 var(--shadow-color);
+  }
+}

@@ -1,0 +1,396 @@
+@import '../variables.scss';
+
+.mybooks {
+  min-height: calc(100vh - 80px);
+  background-color: var(--bg-secondary);
+  padding: $spacing-xl 0;
+  @include theme-transition;
+  
+  @include mobile {
+    min-height: calc(100vh - 70px);
+    padding: $spacing-lg 0;
+  }
+  
+  &__header {
+    text-align: center;
+    margin-bottom: $spacing-2xl;
+    
+    h1 {
+      color: var(--text-primary);
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: $spacing-sm;
+      
+      @include mobile {
+        font-size: 2rem;
+      }
+    }
+    
+    p {
+      color: var(--text-secondary);
+      font-size: 1.125rem;
+      margin-bottom: 0;
+      
+      @include mobile {
+        font-size: 1rem;
+      }
+    }
+  }
+  
+  &__loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    gap: $spacing-lg;
+    
+    p {
+      color: var(--text-secondary);
+      font-size: 1.125rem;
+      margin: 0;
+    }
+  }
+  
+  &__spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid var(--border-color);
+    border-top: 4px solid var(--primary-blue);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  
+  &__empty {
+    text-align: center;
+    padding: $spacing-2xl;
+    background-color: var(--bg-primary);
+    border-radius: $radius-lg;
+    @include card-shadow;
+    max-width: 500px;
+    margin: 0 auto;
+    
+    &-icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto $spacing-lg;
+      color: var(--text-muted);
+      
+      svg {
+        width: 100%;
+        height: 100%;
+        stroke-width: 1.5;
+      }
+    }
+    
+    h3 {
+      color: var(--text-primary);
+      font-size: 1.5rem;
+      margin-bottom: $spacing-md;
+    }
+    
+    p {
+      color: var(--text-secondary);
+      margin-bottom: $spacing-lg;
+      font-size: 1rem;
+    }
+  }
+  
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: $spacing-lg;
+    
+    @include mobile {
+      grid-template-columns: 1fr;
+      gap: $spacing-md;
+    }
+  }
+  
+  &__view-toggle {
+    display: flex;
+    justify-content: center;
+    gap: $spacing-sm;
+    margin-bottom: $spacing-xl;
+    
+    button {
+      padding: $spacing-sm $spacing-lg;
+      border: 2px solid var(--border-color);
+      background-color: var(--bg-primary);
+      color: var(--text-secondary);
+      border-radius: $radius-md;
+      cursor: pointer;
+      transition: all $transition-fast;
+      font-weight: 500;
+      
+      &:hover {
+        border-color: var(--primary-blue);
+        color: var(--primary-blue);
+      }
+      
+      &.active {
+        background-color: var(--primary-blue);
+        border-color: var(--primary-blue);
+        color: white;
+      }
+      
+      svg {
+        width: 18px;
+        height: 18px;
+        margin-right: $spacing-xs;
+      }
+    }
+  }
+  
+  &__card {
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: $radius-lg;
+    overflow: hidden;
+    @include card-shadow;
+    @include theme-transition;
+    transition: all $transition-fast;
+    
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+      border-color: var(--primary-blue);
+    }
+    
+    &-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: $spacing-lg;
+      border-bottom: 1px solid var(--border-color);
+      background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-quaternary) 100%);
+      
+      h3 {
+        color: var(--text-primary);
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: $spacing-sm;
+        
+        &::before {
+          content: '';
+          width: 24px;
+          height: 24px;
+          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='%233C60B3' stroke-width='2' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 2v20'/%3E%3Cpath d='M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'/%3E%3C/svg%3E");
+          background-size: contain;
+          background-repeat: no-repeat;
+          flex-shrink: 0;
+        }
+      }
+    }
+    
+    &-body {
+      padding: $spacing-lg;
+    }
+    
+    &-footer {
+      padding: $spacing-lg;
+      border-top: 1px solid var(--border-color);
+      background-color: var(--bg-tertiary);
+      
+      .admin__actions {
+        justify-content: center;
+        gap: $spacing-sm;
+        
+        .btn {
+          flex: 1;
+          min-width: auto;
+          
+          @include mobile {
+            flex: none;
+            width: 100%;
+          }
+        }
+      }
+    }
+  }
+  
+  &__info {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+    
+    &-item {
+      display: flex;
+      align-items: center;
+      gap: $spacing-md;
+      padding: $spacing-md;
+      background-color: var(--bg-secondary);
+      border-radius: $radius-md;
+      border: 1px solid var(--border-color);
+      @include theme-transition;
+      
+      &:hover {
+        border-color: var(--primary-blue);
+        background-color: var(--bg-tertiary);
+      }
+      
+      svg {
+        width: 24px;
+        height: 24px;
+        color: var(--primary-blue);
+        flex-shrink: 0;
+        stroke-width: 2;
+      }
+      
+      div {
+        display: flex;
+        flex-direction: column;
+        gap: $spacing-xs;
+        flex: 1;
+        
+        .label {
+          font-size: 0.75rem;
+          color: var(--text-muted);
+          font-weight: 500;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+        
+        .value {
+          font-size: 1rem;
+          color: var(--text-primary);
+          font-weight: 600;
+        }
+      }
+    }
+  }
+  
+  // Table styles for legacy view
+  &__table {
+    background-color: var(--bg-primary);
+    border-radius: $radius-lg;
+    overflow: hidden;
+    @include card-shadow;
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      
+      thead {
+        background-color: var(--bg-quaternary);
+        
+        th {
+          padding: $spacing-md;
+          text-align: left;
+          font-weight: 700;
+          color: var(--text-primary);
+          font-size: 0.875rem;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          border-bottom: 2px solid var(--border-strong);
+          
+          &:last-child {
+            text-align: center;
+          }
+        }
+      }
+      
+      tbody {
+        tr {
+          @include theme-transition;
+          
+          &:hover {
+            background-color: var(--bg-tertiary);
+          }
+          
+          &.cancelled {
+            background-color: rgba(239, 68, 68, 0.05);
+            opacity: 0.7;
+          }
+          
+          &.active {
+            background-color: rgba(16, 185, 129, 0.05);
+            border-left: 4px solid var(--success);
+          }
+          
+          td {
+            padding: $spacing-md;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            vertical-align: middle;
+            
+            &:last-child {
+              text-align: center;
+            }
+          }
+        }
+      }
+    }
+    
+    &-empty {
+      padding: $spacing-2xl;
+      text-align: center;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+  }
+  
+  &__status {
+    display: inline-flex;
+    align-items: center;
+    gap: $spacing-xs;
+    font-weight: 600;
+    
+    svg {
+      width: 16px;
+      height: 16px;
+      stroke-width: 2;
+    }
+    
+    &--active {
+      color: var(--success);
+    }
+    
+    &--cancelled {
+      color: var(--error);
+    }
+    
+    &--unknown {
+      color: var(--text-muted);
+    }
+    
+    &-reason {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 400;
+      margin-top: $spacing-xs;
+      font-style: italic;
+    }
+  }
+  
+  &__actions {
+    display: flex;
+    gap: $spacing-sm;
+    justify-content: center;
+    flex-wrap: wrap;
+    
+    @include mobile {
+      flex-direction: column;
+    }
+    
+    .btn {
+      font-size: 0.875rem;
+      padding: $spacing-sm $spacing-md;
+      min-width: 120px;
+      
+      @include mobile {
+        font-size: 1rem;
+        padding: $spacing-md $spacing-lg;
+        min-width: auto;
+      }
+    }
+  }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
