@@ -8,15 +8,26 @@ import "../assets/styles/pages/Auth.scss";
 import { Link } from "react-router-dom";
 
 const rooms = (() => {
-  let allRooms = [];
-  for (let i = 1; i <= 22; i++) allRooms.push(i.toString().padStart(3, "0"));
-  for (let floor = 1; floor <= 4; floor++) {
-    for (let i = 1; i <= 22; i++)
-      allRooms.push(`${floor}${i.toString().padStart(2, "0")}`);
+  const allRooms = [];
+  const addRange = (start, end) => {
+    for (let num = start; num <= end; num += 1) {
+      const roomNumber = num < 100 ? num.toString().padStart(3, "0") : num.toString();
+      allRooms.push(roomNumber);
+    }
+  };
+
+  addRange(10, 17);
+  addRange(19, 26);
+  addRange(113, 130);
+  addRange(211, 232);
+  addRange(311, 332);
+  addRange(411, 432);
+  addRange(511, 532);
+
+  for (let i = 1; i <= 5; i += 1) {
+    allRooms.push(`Oficiul ${i}`);
   }
-  for (let i = 1; i <= 20; i++)
-    allRooms.push(`5${i.toString().padStart(2, "0")}`);
-  for (let i = 1; i <= 5; i++) allRooms.push(`Oficiul ${i}`);
+
   return allRooms;
 })();
 

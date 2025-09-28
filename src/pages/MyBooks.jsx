@@ -560,7 +560,7 @@ END:VCALENDAR
                 })}
               </div>
             ) : (
-              <div className="mybooks__table d-none d-md-block">
+              <div className="mybooks__table">
                 <div className="mybooks__table-scroll">
                   <table>
                     <thead>

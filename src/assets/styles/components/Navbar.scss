@@ -401,6 +401,7 @@
     transition: all $transition-fast;
     position: relative;
     font-size: 0.875rem;
+    text-align: center;
     
     // Medium tablets - smaller padding and font
     @include md {

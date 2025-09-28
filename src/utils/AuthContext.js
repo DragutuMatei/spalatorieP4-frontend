@@ -90,7 +90,18 @@ export const AuthProvider = ({ children }) => {
           role: "user",
           validate: false,
         },
+        preventOverwrite: true,
       });
+
+      if (!res.data.success) {
+        if (res.status === 409 || res.data.code === 409) {
+          toast_warn("Există deja un cont pentru acest utilizator. Autentifică-te.");
+        } else {
+          toast_error(res.data.message || "Nu s-a putut crea contul.");
+        }
+        await signUserOut();
+        return null;
+      }
 
       setUser({
         uid: result.user.uid,
@@ -99,7 +110,14 @@ export const AuthProvider = ({ children }) => {
 
       return res.data.user;
     } catch (error) {
-      toast_error(`Google Sign-In Error: ${error}`);
+      if (error.response?.status === 409) {
+        toast_warn("Există deja un cont pentru acest utilizator. Autentifică-te.");
+      } else {
+        const errMessage = error.response?.data?.message || error.message || "Eroare necunoscută";
+        toast_error(`Google Sign-In Error: ${errMessage}`);
+      }
+      await signUserOut();
+      return null;
     }
   };
 

@@ -2476,9 +2476,9 @@ function Home({ userApproved = false }) {
       socket.emit("requestTempReservationsSync");
     });
     socket.on("settings", (data) => {
-      console.log('Home received settings:', data);
+      console.log("Home received settings:", data);
       if (data.settings.success) {
-        console.log('Updating realStates with:', data.settings.settings);
+        console.log("Updating realStates with:", data.settings.settings);
         setRealStates({
           M1: data.settings.settings.m1Enabled,
           M2: data.settings.settings.m2Enabled,
@@ -3083,6 +3083,38 @@ function Home({ userApproved = false }) {
         </div>
       )}
 
+      {programari && programari.length > 0 && createProgramare() != null && (
+        <div className="home__floating-actions">
+          <button className="btn btn-secondary" onClick={renunta}>
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+            Renunță
+          </button>
+          <button className="btn btn-success" onClick={submit}>
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <polyline points="20,6 9,17 4,12" />
+            </svg>
+            Finalizează programarea
+          </button>
+        </div>
+      )}
+
       <div className="container">
         {/* Header */}
         <div className="home__header">
@@ -3109,35 +3141,6 @@ function Home({ userApproved = false }) {
                 </strong>
                 <span>Intervalul orar</span>
               </div>
-            </div>
-            <div className="home__booking-summary__actions">
-              <button className="btn btn-success" onClick={submit}>
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <polyline points="20,6 9,17 4,12" />
-                </svg>
-                Finalizează programarea
-              </button>
-              <button className="btn btn-secondary" onClick={renunta}>
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-                Renunță
-              </button>
             </div>
           </div>
         )}
@@ -3186,13 +3189,21 @@ function Home({ userApproved = false }) {
                         : ""
                     }`}
                     onClick={() => {
-                      if (realStates[m.name]) {
-                        // Dacă avem programări active, resetăm înainte de a schimba mașina
-                        if (programari && programari.length > 0) {
-                          renunta();
-                        }
-                        setSelectedMachine(m.name);
+                      if (!realStates[m.name]) {
+                        return;
                       }
+
+                      const isAlreadySelected = selectedMachine === m.name;
+
+                      if (programari && programari.length > 0) {
+                        renunta();
+                        if (isAlreadySelected) {
+                          setSelectedMachine("");
+                          return;
+                        }
+                      }
+
+                      setSelectedMachine(isAlreadySelected ? "" : m.name);
                     }}
                   >
                     <div className="home__machine-selector__option__name">
@@ -3256,12 +3267,12 @@ function Home({ userApproved = false }) {
                       key={userId}
                       style={{ marginBottom: "0.5rem", fontSize: "0.875rem" }}
                     >
-                      <strong>{reservation.userName}</strong> (cam. {" "}
-                      {reservation.camera}) selectează {" "}
-                      <strong>{reservation.machine}</strong> pentru: {" "}
+                      <strong>{reservation.userName}</strong> (cam.{" "}
+                      {reservation.camera}) selectează{" "}
+                      <strong>{reservation.machine}</strong> pentru:{" "}
                       {reservation.intervals.map((interval, idx) => (
                         <span key={idx}>
-                          {interval.start_interval_time} - {" "}
+                          {interval.start_interval_time} -{" "}
                           {interval.final_interval_time}
                           {idx < reservation.intervals.length - 1 ? ", " : ""}
                         </span>
@@ -3280,9 +3291,13 @@ function Home({ userApproved = false }) {
             <div className="card__header">
               <h3>
                 Program pentru {dayjs(value).format("DD/MM/YYYY")}
-                {selectedMachine && (
-                  <span className="badge badge--info">{selectedMachine}</span>
-                )}
+                <span
+                  className={`badge ${
+                    selectedMachine ? "badge--info" : "badge--warning"
+                  }`}
+                >
+                  {selectedMachine || "Toate maşinile"}
+                </span>
               </h3>
             </div>
 
@@ -3440,7 +3455,8 @@ function Home({ userApproved = false }) {
                   <span>Cameră:</span> {selectedBookingDetails.camera}
                 </p>
                 <p>
-                  <span>Telefon:</span> {selectedBookingDetails.telefon || "N/A"}
+                  <span>Telefon:</span>{" "}
+                  {selectedBookingDetails.telefon || "N/A"}
                 </p>
               </div>
             </div>

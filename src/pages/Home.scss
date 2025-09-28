@@ -2,35 +2,35 @@
 
 .home {
   padding: $spacing-lg 0;
-  
+
   @include mobile {
     padding: $spacing-md 0;
   }
-  
+
   &__header {
     margin-bottom: $spacing-xl;
     text-align: center;
-    
+
     h1 {
       color: var(--text-primary);
       margin-bottom: $spacing-sm;
       font-size: 2.5rem;
-      
+
       @include mobile {
         font-size: 2rem;
       }
     }
-    
+
     p {
       color: var(--text-secondary);
       font-size: 1.125rem;
-      
+
       @include mobile {
         font-size: 1rem;
       }
     }
   }
-  
+
   &__booking-summary {
     background: linear-gradient(135deg, var(--primary-blue), var(--primary-blue-light));
     color: white;
@@ -39,79 +39,79 @@
     margin-bottom: $spacing-xl;
     text-align: center;
     @include card-shadow;
-    
+
     @include mobile {
       padding: $spacing-lg;
       margin-bottom: $spacing-lg;
     }
-    
+
     h2 {
       margin-bottom: $spacing-lg;
       font-size: 1.5rem;
-      
+
       @include mobile {
         font-size: 1.25rem;
         margin-bottom: $spacing-md;
       }
     }
-    
+
     &__details {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: $spacing-lg;
       margin-bottom: $spacing-lg;
-      
+
       @include mobile {
         grid-template-columns: 1fr;
         gap: $spacing-md;
       }
     }
-    
+
     &__detail {
       background: rgba(255, 255, 255, 0.1);
       padding: $spacing-md;
       border-radius: $radius-lg;
-      
+
       strong {
         display: block;
         font-size: 1.25rem;
         margin-bottom: $spacing-xs;
-        
+
         @include mobile {
           font-size: 1.125rem;
         }
       }
-      
+
       span {
         font-size: 0.875rem;
         opacity: 0.9;
       }
     }
-    
+
     &__actions {
       display: flex;
       gap: $spacing-md;
       justify-content: center;
-      
+
       @include mobile {
         flex-direction: column;
         gap: $spacing-sm;
       }
     }
   }
-  
+
   &__controls {
     display: grid;
     grid-template-columns: 1fr 2fr;
     gap: $spacing-xl;
     margin-bottom: $spacing-xl;
     align-items: start;
-    
+
     @include mobile {
       grid-template-columns: 1fr;
       gap: $spacing-lg;
     }
-    
+
     .card {
       height: 100%;
       min-height: 214px;
@@ -119,22 +119,22 @@
       flex-direction: column;
     }
   }
-  
+
   &__date-picker {
     .card {
       text-align: center;
-      
+
       h3 {
         margin-bottom: $spacing-lg;
         color: var(--text-primary);
       }
-      
+
       .rmdp-container {
         margin: 0 auto;
       }
     }
   }
-  
+
   &__machine-selector {
     .card {
       h3 {
@@ -142,17 +142,17 @@
         color: var(--text-primary);
       }
     }
-    
+
     &__grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
       gap: $spacing-md;
-      
+
       @include mobile {
         grid-template-columns: 1fr;
       }
     }
-    
+
     &__option {
       padding: $spacing-lg;
       border: 2px solid var(--border-color);
@@ -161,39 +161,39 @@
       cursor: pointer;
       text-align: center;
       transition: all $transition-fast;
-      
+
       &:hover {
         border-color: var(--primary-blue);
         background-color: var(--bg-tertiary);
       }
-      
+
       &--selected {
         border-color: var(--primary-blue);
         background-color: rgba(60, 96, 179, 0.1);
         color: var(--primary-blue);
       }
-      
+
       &--disabled {
         opacity: 0.5;
         cursor: not-allowed;
         background-color: var(--bg-tertiary);
-        
+
         &:hover {
           border-color: var(--border-color);
           background-color: var(--bg-tertiary);
         }
       }
-      
+
       &__name {
         font-weight: 600;
         margin-bottom: $spacing-xs;
         font-size: 1rem;
-        
+
         @include mobile {
           font-size: 0.875rem;
         }
       }
-      
+
       &__status {
         font-size: 0.75rem;
         text-transform: uppercase;
@@ -201,43 +201,45 @@
       }
     }
   }
-  
+
   &__schedule {
+    margin-bottom: 100px;
+
     .card {
       padding: 0;
       overflow: hidden;
-      
+
       &__header {
         padding: $spacing-lg;
         background-color: var(--bg-quaternary);
         border-bottom: 1px solid var(--border-color);
-        
+
         @include mobile {
           padding: $spacing-md;
         }
-        
+
         h3 {
           margin: 0;
           color: var(--text-primary);
           display: flex;
           align-items: center;
           justify-content: space-between;
-          
+
           .badge {
             font-size: 0.75rem;
           }
         }
       }
-      
+
       &__grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-        
+
         @include mobile {
           grid-template-columns: repeat(2, 1fr);
         }
       }
-      
+
       &__machine-header {
         padding: $spacing-md;
         background-color: var(--bg-tertiary);
@@ -245,30 +247,30 @@
         text-align: center;
         font-weight: 600;
         color: var(--text-primary);
-        
+
         @include mobile {
           padding: $spacing-sm;
           font-size: 0.875rem;
         }
-        
+
         &:last-child {
           border-right: none;
         }
       }
-      
+
       &__time-slot {
         display: grid;
         grid-template-columns: 100px 1fr;
         border-bottom: 1px solid var(--border-color);
-        
+
         @include mobile {
           grid-template-columns: 80px 1fr;
         }
-        
+
         &:last-child {
           border-bottom: none;
         }
-        
+
         &__time {
           padding: $spacing-md;
           background-color: var(--bg-tertiary);
@@ -278,22 +280,22 @@
           display: flex;
           align-items: center;
           font-size: 0.875rem;
-          
+
           @include mobile {
             padding: $spacing-sm;
             font-size: 0.75rem;
           }
         }
-        
+
         &__machines {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-          
+
           @include mobile {
             grid-template-columns: repeat(2, 1fr);
           }
         }
-        
+
         &__machine {
           padding: $spacing-md;
           border-right: 1px solid var(--border-color);
@@ -305,69 +307,69 @@
           min-height: 60px;
           font-size: 0.875rem;
           font-weight: 500;
-          
+
           @include mobile {
             padding: $spacing-sm;
             font-size: 0.75rem;
             min-height: 50px;
           }
-          
+
           &:last-child {
             border-right: none;
           }
-          
+
           &--available {
             background-color: rgba(38, 165, 68, 0.1);
             color: var(--primary-green-dark);
-            
+
             &:hover {
               background-color: rgba(38, 165, 68, 0.2);
             }
-            
+
             [data-theme="dark"] & {
               color: var(--primary-green-light);
             }
           }
-          
+
           &--occupied {
             background-color: rgba(239, 68, 68, 0.1);
             color: #dc2626;
             cursor: not-allowed;
-            
+
             [data-theme="dark"] & {
               color: #fca5a5;
             }
           }
-          
+
           &--maintenance {
             background-color: rgba(247, 143, 30, 0.1);
             color: var(--primary-orange-dark);
             cursor: not-allowed;
-            
+
             [data-theme="dark"] & {
               color: var(--primary-orange-light);
             }
           }
-          
+
           &--reserved {
             background-color: rgba(60, 96, 179, 0.1);
             color: var(--primary-blue-dark);
-            
+
             [data-theme="dark"] & {
               color: var(--primary-blue-light);
             }
           }
-          
+
           &--temp-reserved {
             background-color: rgba(247, 143, 30, 0.15);
             color: var(--primary-orange-dark);
             cursor: not-allowed;
             position: relative;
-            
+
             [data-theme="dark"] & {
               color: var(--primary-orange-light);
             }
-            
+
             &::after {
               content: '';
               position: absolute;
@@ -380,7 +382,7 @@
               animation: pulse 2s infinite;
             }
           }
-          
+
           &--disabled {
             background-color: var(--bg-tertiary);
             color: var(--text-muted);
@@ -465,12 +467,12 @@
     transform: scale(0.95);
     opacity: 1;
   }
-  
+
   70% {
     transform: scale(1);
     opacity: 0.7;
   }
-  
+
   100% {
     transform: scale(0.95);
     opacity: 1;
@@ -484,6 +486,7 @@
     -webkit-overflow-scrolling: touch;
     border-top: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
+    padding-bottom: $spacing-lg;
 
     table {
       min-width: 720px;
@@ -494,10 +497,49 @@
     .table__scroll {
       border-top: none;
       border-bottom: none;
+      padding-right: clamp(160px, 25vw, 320px);
+
+
 
       table {
         min-width: 640px;
       }
     }
   }
+}
+
+.home__floating-actions {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + $spacing-lg);
+  transform: translateX(-50%);
+  width: min(640px, calc(100% - 2 * $spacing-lg));
+  display: flex;
+  justify-content: space-between;
+  gap: $spacing-md;
+  padding: $spacing-md $spacing-lg;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: $radius-xl;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18);
+  z-index: 1100;
+
+  .btn {
+    flex: 1;
+    min-width: 0;
+  }
+
+  @include mobile {
+    width: calc(100% - 2 * $spacing-md);
+    flex-direction: column-reverse;
+    padding: $spacing-md;
+
+    .btn {
+      width: 100%;
+    }
+  }
+}
+
+.home {
+  padding-bottom: 80px;
 }
