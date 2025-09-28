@@ -30,7 +30,10 @@ function Navbar() {
       file: "Ghid de utilizare a platformei de programari.pdf",
     },
     { name: "Ghid uscator", file: "Ghid uscator.pdf" },
-    { name: "Ghidul ciclurilor de spalare", file: "Ghidul ciclurilor de spalare.pdf" },
+    {
+      name: "Ghidul ciclurilor de spalare",
+      file: "Ghidul ciclurilor de spalare.pdf",
+    },
     { name: "Manual Uscator", file: "Manual Uscator.pdf" },
     {
       name: "Regulament de utilizare a spalatoriei",
@@ -498,7 +501,7 @@ function Navbar() {
                 Admin
               </Link>
             )}
-            <button
+            <div
               className="btn btn-secondary navbar__mobile-logout"
               onClick={async () => {
                 await signUserOut();
@@ -506,7 +509,7 @@ function Navbar() {
               }}
             >
               Logout
-            </button>
+            </div>
           </div>
         </div>
       )}
