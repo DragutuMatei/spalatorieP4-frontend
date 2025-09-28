@@ -1,11 +1,11 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useAuth } from "../utils/AuthContext";
 import { toast_error } from "../utils/Toasts";
 import Logo from "../components/Logo";
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
 import "../assets/styles/pages/Auth.scss";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const rooms = (() => {
   const allRooms = [];
@@ -35,6 +35,7 @@ const rooms = (() => {
 
 function Auth() {
   const { user, loading, register, signInWithGoogle, signUserOut } = useAuth();
+  const navigate = useNavigate();
   const [showRegister, setShowRegister] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [inputValue, setInputValue] = useState("");
@@ -83,6 +84,12 @@ function Auth() {
       setIsSubmitting(false);
     }
   };
+
+  useEffect(() => {
+    if (!loading && user) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [loading, user, navigate]);
 
   if (loading) {
     return (
