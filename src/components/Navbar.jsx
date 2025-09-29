@@ -28,8 +28,8 @@ function Navbar() {
       file: "Curatarea sitelor.pdf",
     },
     {
-      name: "Ghid de utilizare a platformei de programari",
-      file: "Ghid de utilizare a platformei de programari.pdf",
+      name: "Ghid programari",
+      file: "Ghid programari.pdf",
     },
     { name: "Ghid uscator", file: "Ghid uscator.pdf" },
     {
@@ -40,6 +40,10 @@ function Navbar() {
     {
       name: "Regulament de utilizare a spalatoriei",
       file: "Regulament de utilizare a spalatoriei.pdf",
+    },
+    {
+      name: "Regulament uscator",
+      file: "Regulament uscator.pdf",
     },
   ];
 
