@@ -2360,13 +2360,14 @@ function Home({ userApproved = false }) {
         return;
       }
 
-      setSelectedBookingDetails({
-        machine: machineName,
-        interval: `${booking.start_interval_time} - ${booking.final_interval_time}`,
-        nume: booking.user?.numeComplet || "N/A",
-        camera: booking.user?.camera || "N/A",
-        telefon: booking.user?.telefon || "N/A",
-      });
+      if (user && userApproved)
+        setSelectedBookingDetails({
+          machine: machineName,
+          interval: `${booking.start_interval_time} - ${booking.final_interval_time}`,
+          nume: booking.user?.numeComplet || "N/A",
+          camera: booking.user?.camera || "N/A",
+          telefon: booking.user?.telefon || "N/A",
+        });
     },
     [findBookingForSlot]
   );
@@ -2410,9 +2411,12 @@ function Home({ userApproved = false }) {
       const response = await AXIOS.get("/api/temp-reservations");
       if (response.data.success) {
         setTempReservations(response.data.tempReservations || {});
-      }else {
+      } else {
         setTempReservations({});
-        toast_error(response.data.message || "Eroare la incarcarea rezervarilor temporare.");
+        toast_error(
+          response.data.message ||
+            "Eroare la incarcarea rezervarilor temporare."
+        );
       }
     } catch (error) {
       if (error?.response?.status === 404) {
@@ -2471,7 +2475,10 @@ function Home({ userApproved = false }) {
         setMaintenanceIntervals(rasp.data.maintenanceIntervals);
       } else {
         setMaintenanceIntervals([]);
-        toast_error(rasp.data.message || "Eroare la incarcarea intervalilor de mentenanță.");
+        toast_error(
+          rasp.data.message ||
+            "Eroare la incarcarea intervalilor de mentenanță."
+        );
       }
     } catch (error) {
       if (error?.response?.status === 404) {
@@ -2482,7 +2489,7 @@ function Home({ userApproved = false }) {
     }
   };
   useEffect(() => {
-    getSettings(); 
+    getSettings();
     getProgramari();
     getMaintenanceIntervals();
     // Obține rezervările temporare existente când se încarcă componenta
@@ -3399,7 +3406,9 @@ function Home({ userApproved = false }) {
 
                         const slotEndDateTime = dayjs
                           .tz(
-                            `${selectedDate.format("YYYY-MM-DD")} ${hour.final_interval_time}`,
+                            `${selectedDate.format("YYYY-MM-DD")} ${
+                              hour.final_interval_time
+                            }`,
                             "YYYY-MM-DD HH:mm",
                             timeZone
                           )
