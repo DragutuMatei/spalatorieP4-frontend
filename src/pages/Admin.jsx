@@ -10,6 +10,7 @@ import timezone from "dayjs/plugin/timezone";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import LoadingSpinner from "../components/LoadingSpinner";
 import "../assets/styles/pages/Admin.scss";
+import { Link } from "react-router-dom";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -119,11 +120,16 @@ function Admin() {
   const [savingSetting, setSavingSetting] = useState(null);
   const [maintenanceSubmitting, setMaintenanceSubmitting] = useState(false);
   const [maintenanceDeleting, setMaintenanceDeleting] = useState({});
+  const [cleanupLoading, setCleanupLoading] = useState({
+    official: false,
+    local: false,
+  });
   const [userActionLoading, setUserActionLoading] = useState({});
   const [bookingActionLoading, setBookingActionLoading] = useState({});
   const [expandedSections, setExpandedSections] = useState({
     users: true,
     settings: true,
+    cleanup: true,
     bookings: false,
     maintenance: false,
   });
@@ -155,6 +161,32 @@ function Admin() {
       if (error?.response?.status !== 404) {
         toast_error("Nu s-au putut încărca setările!");
       }
+    }
+  };
+
+  const handleManualCleanup = async (scope) => {
+    setCleanupLoading((prev) => ({ ...prev, [scope]: true }));
+    try {
+      const response = await AXIOS.post("/api/programari/cleanup", { scope });
+      if (response.data.success) {
+        toast_success(
+          `Curățare ${scope === "local" ? "locală" : "oficială"} completă: ${
+            response.data.deletedProgramari
+          } programări și ${
+            response.data.deletedNotifications
+          } notificări șterse.`
+        );
+        await getBookings();
+      } else {
+        toast_error(response.data.message || "Curățarea a eșuat.");
+      }
+    } catch (error) {
+      console.error("Manual cleanup error:", error);
+      toast_error(
+        error?.response?.data?.message || "Curățarea manuală a eșuat."
+      );
+    } finally {
+      setCleanupLoading((prev) => ({ ...prev, [scope]: false }));
     }
   };
 
@@ -219,7 +251,11 @@ function Admin() {
                 value ? "blocate" : "deblocate"
               }!`
             : `Programările pentru ${
-                key === "m1Enabled" ? "M1" : key === "m2Enabled" ? "M2" : "Uscător"
+                key === "m1Enabled"
+                  ? "M1"
+                  : key === "m2Enabled"
+                  ? "M2"
+                  : "Uscător"
               } au fost ${value ? "activate" : "dezactivate"}!`
         );
       }
@@ -427,9 +463,7 @@ function Admin() {
           setSettings((prev) => ({
             ...prev,
             ...data.settings.settings,
-            blockPastSlots: Boolean(
-              data.settings.settings.blockPastSlots
-            ),
+            blockPastSlots: Boolean(data.settings.settings.blockPastSlots),
           }));
         }
       };
@@ -705,6 +739,83 @@ function Admin() {
         <br />
         <br />
 
+        {/* Curățare date */}
+        <div className="admin__section admin__section--full-width">
+          <div
+            className="admin__section-header"
+            onClick={() =>
+              setExpandedSections((prev) => ({
+                ...prev,
+                cleanup: !prev.cleanup,
+              }))
+            }
+          >
+            <h2>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M3 6h18M5 6l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12" />
+                <path d="M10 11v6M14 11v6M9 6l1-3h4l1 3" />
+              </svg>
+              Curățare manuală date
+            </h2>
+            <svg
+              className={`toggle-icon ${
+                expandedSections.cleanup ? "toggle-icon--expanded" : ""
+              }`}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </div>
+          <div
+            className={`admin__section-content ${
+              !expandedSections.cleanup
+                ? "admin__section-content--collapsed"
+                : ""
+            }`}
+          >
+            <p>
+              Șterge rezervările și notificările mai vechi de 7 zile din
+              colecțiile oficiale (folosite în producție) sau din replicile
+              locale (`*_local`).
+            </p>
+            <div className="admin__cleanup-actions">
+              <button
+                className="btn btn-danger"
+                onClick={() => handleManualCleanup("official")}
+                disabled={cleanupLoading.official}
+              >
+                {cleanupLoading.official ? (
+                  <>
+                    <LoadingSpinner size="sm" inline /> Se curăță (oficial)...
+                  </>
+                ) : (
+                  "Șterge date oficiale > 7 zile"
+                )}
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => handleManualCleanup("local")}
+                disabled={cleanupLoading.local}
+              >
+                {cleanupLoading.local ? (
+                  <>
+                    <LoadingSpinner size="sm" inline /> Se curăță (local)...
+                  </>
+                ) : (
+                  "Șterge date locale > 7 zile"
+                )}
+              </button>
+              <button className="btn btn-secondary">
+                <Link to="/local-tools">Sincronizare date prod vs local</Link>
+              </button>
+            </div>
+          </div>
+        </div>
+        <br />
+        <br />
+
         {/* Mentenanță */}
         <div className="admin__section admin__section--full-width">
           <div
@@ -947,7 +1058,9 @@ function Admin() {
                                     return;
                                   toggleApproval(user.uid, user.validate);
                                 }}
-                                disabled={!!userActionLoading[`${user.uid}-approval`]}
+                                disabled={
+                                  !!userActionLoading[`${user.uid}-approval`]
+                                }
                               >
                                 {userActionLoading[`${user.uid}-approval`] ? (
                                   <>
@@ -963,10 +1076,13 @@ function Admin() {
                               <button
                                 className="btn btn-primary"
                                 onClick={() => {
-                                  if (userActionLoading[`${user.uid}-role`]) return;
+                                  if (userActionLoading[`${user.uid}-role`])
+                                    return;
                                   toggleAdmin(user.uid, user.role);
                                 }}
-                                disabled={!!userActionLoading[`${user.uid}-role`]}
+                                disabled={
+                                  !!userActionLoading[`${user.uid}-role`]
+                                }
                               >
                                 {userActionLoading[`${user.uid}-role`] ? (
                                   <>

@@ -10,6 +10,7 @@ import { AuthProvider } from "./utils/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Admin from "./pages/Admin";
+import LocalDataTools from "./pages/LocalDataTools";
 import "./assets/styles/theme.scss";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -69,6 +70,14 @@ function App() {
                       <Admin />
                     </ProtectedRoute>
                   } 
+                />
+                <Route
+                  path="/local-tools"
+                  element={
+                    <ProtectedRoute requireAuth={true} adminOnly={true}>
+                      <LocalDataTools />
+                    </ProtectedRoute>
+                  }
                 />
               </Routes>
             </main>
