@@ -1,20 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { useAuth } from "../utils/AuthContext";
+import { Link } from "react-router-dom";
+import DatePicker from "react-multi-date-picker";
+import dayjs from "dayjs";
 import AXIOS from "../utils/Axios_config";
 import { toast_error, toast_success } from "../utils/Toasts";
 import { useSocket } from "../utils/SocketContext";
-import DatePicker from "react-multi-date-picker";
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
-import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
+import { useAuth } from "../utils/AuthContext";
 import LoadingSpinner from "../components/LoadingSpinner";
 import "../assets/styles/pages/Admin.scss";
-import { Link } from "react-router-dom";
-
-dayjs.extend(utc);
-dayjs.extend(timezone);
-dayjs.extend(isSameOrAfter);
+const BUCURESTI_TZ = "Europe/Bucharest";
 
 // Helper function to calculate duration between two time strings
 const calculateDuration = (startTime, endTime) => {
@@ -96,6 +90,57 @@ const safeRender = (value, fallback = "N/A") => {
 
   return fallback;
 };
+
+const extractCreatedAt = (entry) => {
+  if (!entry) {
+    return 0;
+  }
+
+  const rawValue =
+    entry.created_at ?? entry.createdAt ?? entry.created ?? entry.createdAT ?? null;
+
+  if (rawValue === null || rawValue === undefined) {
+    return 0;
+  }
+
+  if (typeof rawValue === "number") {
+    return rawValue;
+  }
+
+  if (typeof rawValue === "string") {
+    const numeric = Number(rawValue);
+    if (!Number.isNaN(numeric)) {
+      return numeric;
+    }
+
+    const parsed = dayjs(rawValue);
+    if (parsed.isValid()) {
+      return parsed.valueOf();
+    }
+
+    return 0;
+  }
+
+  if (typeof rawValue === "object") {
+    if (rawValue._seconds !== undefined) {
+      const nanos = rawValue._nanoseconds ?? 0;
+      return rawValue._seconds * 1000 + Math.floor(nanos / 1_000_000);
+    }
+    if (rawValue.seconds !== undefined) {
+      const nanos = rawValue.nanoseconds ?? 0;
+      return rawValue.seconds * 1000 + Math.floor(nanos / 1_000_000);
+    }
+    if (rawValue.toDate instanceof Function) {
+      const dateValue = rawValue.toDate();
+      return dateValue instanceof Date ? dateValue.getTime() : 0;
+    }
+  }
+
+  return 0;
+};
+
+const sortByCreatedAtDesc = (list = []) =>
+  [...list].sort((a, b) => extractCreatedAt(b) - extractCreatedAt(a));
 
 function Admin() {
   const { user, loading } = useAuth();
@@ -210,7 +255,7 @@ function Admin() {
       const rasp = await AXIOS.get("/api/programare");
       console.log("Bookings response:", rasp.data);
       if (rasp.data.success) {
-        setBookings(rasp.data.programari || []);
+        setBookings(sortByCreatedAtDesc(rasp.data.programari || []));
       }
     } catch (error) {
       console.log("Bookings error:", error);
@@ -331,7 +376,9 @@ function Admin() {
       });
       if (rasp.data.success) {
         // Remove booking from admin view (it becomes inactive)
-        setBookings(bookings.filter((b) => b.uid !== bookingId));
+        setBookings((prev) =>
+          sortByCreatedAtDesc(prev.filter((b) => b.uid !== bookingId))
+        );
         setReasons({ ...reasons, [bookingId]: "" });
         toast_success("Rezervare anulată și notificare trimisă!");
       }
@@ -486,16 +533,22 @@ function Admin() {
 
       const handleProgramareUpdate = (data) => {
         if (data.action === "create") {
-          setBookings((prev) => [data.programare, ...prev]);
+          setBookings((prev) =>
+            sortByCreatedAtDesc([data.programare, ...prev])
+          );
         } else if (data.action === "update") {
           setBookings((prev) =>
-            prev.map((b) =>
-              b.uid === data.programare.uid ? data.programare : b
+            sortByCreatedAtDesc(
+              prev.map((b) =>
+                b.uid === data.programare.uid ? data.programare : b
+              )
             )
           );
         } else if (data.action === "delete") {
           setBookings((prev) =>
-            prev.filter((b) => b.uid !== data.programareId)
+            sortByCreatedAtDesc(
+              prev.filter((b) => b.uid !== data.programareId)
+            )
           );
         }
       };
@@ -576,18 +629,21 @@ function Admin() {
       })
     : bookings;
 
-  const filteredUsers = users.filter((user) => {
+  const filteredUsers = users.filter((adminUser) => {
+    if (!userSearchTerm) return true;
     const searchLower = userSearchTerm.toLowerCase();
     const nume =
-      typeof user.numeComplet === "string"
-        ? user.numeComplet.toLowerCase()
+      typeof adminUser.numeComplet === "string"
+        ? adminUser.numeComplet.toLowerCase()
         : "";
     const email =
-      typeof (user.google?.email || user.email) === "string"
-        ? (user.google?.email || user.email).toLowerCase()
+      typeof (adminUser.google?.email || adminUser.email) === "string"
+        ? (adminUser.google?.email || adminUser.email).toLowerCase()
         : "";
     const camera =
-      typeof user.camera === "string" ? user.camera.toLowerCase() : "";
+      typeof adminUser.camera === "string"
+        ? adminUser.camera.toLowerCase()
+        : "";
 
     return (
       nume.includes(searchLower) ||
