@@ -218,26 +218,41 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (socket && user) {
       const handleUserUpdate = (data) => {
-        if (data.userId === user.uid) {
-          // Actualizează user-ul local cu noile date
-          setUser(prevUser => ({
-            ...prevUser,
-            ...data.user
-          }));
-          
-          // Afișează notificare pentru schimbări de rol
-          if (data.action === "role_changed") {
-            if (data.user.role === "admin") {
-              toast_success("🎉 Ai fost promovat administrator!");
-            } else {
-              toast_warn("⚠️ Nu mai ești administrator.");
-            }
-          } else if (data.action === "reapproval_required") {
-            toast_warn(
-              "Profilul tău a fost actualizat și este în așteptarea reaprobării."
-            );
-          } else if (data.action === "profile_updated") {
-            toast_success("Profil actualizat.");
+        if (data.userId !== user.uid) {
+          return;
+        }
+
+        setUser((prevUser) => ({
+          ...prevUser,
+          ...data.user,
+        }));
+
+        if (data.action === "role_changed") {
+          if (data.user.role === "admin") {
+            toast_success("🎉 Ai fost promovat administrator!");
+          } else {
+            toast_warn("⚠️ Nu mai ești administrator.");
+          }
+          return;
+        }
+
+        if (data.action === "reapproval_required") {
+          toast_warn(
+            "Profilul tău a fost actualizat și este în așteptarea reaprobării."
+          );
+          return;
+        }
+
+        if (data.action === "profile_updated") {
+          toast_success("Profil actualizat.");
+          return;
+        }
+
+        if (data.action === "approval_changed") {
+          if (data.user.validate) {
+            toast_success("🎉 Contul tău a fost aprobat! Acum poți face programări.");
+          } else {
+            toast_warn("⚠️ Contul tău a fost dezaprobat. Nu mai poți face programări.");
           }
         }
       };

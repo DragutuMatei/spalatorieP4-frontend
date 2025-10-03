@@ -81,6 +81,11 @@ function Home({ userApproved = false }) {
   const [dryerDurationError, setDryerDurationError] = useState(null);
   const dryerSelectionEmitRef = useRef(null);
   const [liveDryerSelection, setLiveDryerSelection] = useState(null);
+  const [isUserApproved, setIsUserApproved] = useState(Boolean(userApproved));
+
+  useEffect(() => {
+    setIsUserApproved(Boolean(userApproved));
+  }, [userApproved]);
 
   const washingMachines = useMemo(
     () => [
@@ -290,7 +295,7 @@ function Home({ userApproved = false }) {
         return;
       }
 
-      if (user && userApproved)
+      if (user && isUserApproved)
         setSelectedBookingDetails({
           machine: machineName,
           interval: `${booking.start_interval_time} - ${booking.final_interval_time}`,
@@ -507,61 +512,57 @@ function Home({ userApproved = false }) {
 
     // Listener pentru actualizări de utilizator (aprobare/dezaprobare)
     socket.on("userUpdate", (data) => {
-      if (data.userId === user?.uid) {
-        // Actualizează statusul local al utilizatorului
-        if (data.user.validate !== user.validate) {
-          if (data.user.validate) {
-            toast_success(
-              "🎉 Contul tău a fost aprobat! Acum poți face programări."
-            );
-          } else {
-            toast_warn(
-              "⚠️ Contul tău a fost dezaprobat. Nu mai poți face programări."
-            );
-          }
-          // Forțează re-render cu noul status
-          window.location.reload();
+      if (data.userId === user?.uid && data.action === "approval_changed") {
+        if (data.user.validate) {
+          toast_success(
+            "🎉 Contul tău a fost aprobat! Acum poți face programări."
+          );
+        } else {
+          toast_warn(
+            "⚠️ Contul tău a fost dezaprobat. Nu mai poți face programări."
+          );
         }
+        setIsUserApproved(Boolean(data.user.validate));
       }
     });
     socket.on("programare", (data) => {
       switch (data.action) {
         case "create":
-          if (
-            data.programare &&
-            data.programare.active &&
-            data.programare.active.status === true
-          ) {
-            let programareToAdd = data.programare;
-            if (data.programare.success && data.programare.programare) {
-              programareToAdd = data.programare.programare;
+          if (data.programare) {
+            const nextProgramare = data.programare.success
+              ? data.programare.programare
+              : data.programare;
+            if (nextProgramare) {
+              setUsersProgramari((prev) => {
+                const exists = prev.some((p) => p.uid === nextProgramare.uid);
+                if (exists) {
+                  return prev.map((p) =>
+                    p.uid === nextProgramare.uid ? nextProgramare : p
+                  );
+                }
+                return [...prev, nextProgramare];
+              });
             }
-
-            setUsersProgramari((prev) => [...prev, programareToAdd]);
           }
           break;
 
         case "update":
           if (data.programare) {
-            // If the programare was cancelled (active.status = false), remove it from Home view
-            if (
-              data.programare.active &&
-              data.programare.active.status === false
-            ) {
-              setUsersProgramari((prev) =>
-                prev.filter((p) => p.uid !== data.programare.uid)
+            setUsersProgramari((prev) => {
+              const exists = prev.some((p) => p.uid === data.programare.uid);
+              if (!exists) {
+                return [...prev, data.programare];
+              }
+              if (
+                data.programare.active &&
+                data.programare.active.status === false
+              ) {
+                return prev.filter((p) => p.uid !== data.programare.uid);
+              }
+              return prev.map((p) =>
+                p.uid === data.programare.uid ? data.programare : p
               );
-            } else if (
-              data.programare.active &&
-              data.programare.active.status === true
-            ) {
-              // If it's still active, update it
-              setUsersProgramari((prev) =>
-                prev.map((p) =>
-                  p.uid === data.programare.uid ? data.programare : p
-                )
-              );
-            }
+            });
           }
           break;
 
@@ -767,7 +768,7 @@ function Home({ userApproved = false }) {
 
   const updateProgramare = (infos, machine, hour_index) => {
     // Verificăm dacă utilizatorul este aprobat pentru a face programări
-    if (!userApproved) {
+    if (!isUserApproved) {
       toast_error(
         "Contul tău nu este încă aprobat! Nu poți face programări până când un administrator nu îți aprobă contul."
       );
@@ -1448,7 +1449,7 @@ function Home({ userApproved = false }) {
   };
 
   const submitWashingMachineBooking = async () => {
-    if (!userApproved) {
+    if (!isUserApproved) {
       toast_error(
         "Contul tău nu este încă aprobat! Nu poți face programări până când un administrator nu îți aprobă contul."
       );
@@ -1500,7 +1501,7 @@ function Home({ userApproved = false }) {
   };
 
   const submitDryerBooking = async () => {
-    if (!userApproved) {
+    if (!isUserApproved) {
       toast_error(
         "Contul tău nu este încă aprobat! Nu poți face programări până când un administrator nu îți aprobă contul."
       );
@@ -1646,7 +1647,7 @@ function Home({ userApproved = false }) {
   return (
     <div className="home">
       {/* Banner pentru utilizatori neaprobați */}
-      {!userApproved && (
+      {!isUserApproved && (
         <div className="container">
           <div className="alert alert--warning">
             <div className="alert__icon">

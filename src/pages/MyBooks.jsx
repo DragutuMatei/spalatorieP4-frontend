@@ -212,15 +212,17 @@ function MyBooks() {
   }, [isMobile]);
 
   useEffect(() => {
-    socket.on("programare", ({ action, programare, programareId }) => {
-      if (!user) return;
+    if (!socket || !user) {
+      return;
+    }
 
+    const handleProgramareEvent = ({ action, programare, programareId }) => {
       const targetUid =
         programare?.user?.uid || programare?.userUid || programare?.user_id;
 
       switch (action) {
         case "create":
-          if (targetUid === user.uid) {
+          if (targetUid === user.uid && programare) {
             setProgramari((prev) => {
               const exists = prev.some((p) => p.uid === programare.uid);
               if (exists) {
@@ -233,12 +235,21 @@ function MyBooks() {
           }
           break;
         case "update":
-          if (targetUid === user.uid) {
-            setProgramari((prev) =>
-              sortProgramariByCreatedAt(
+          if (targetUid === user.uid && programare) {
+            setProgramari((prev) => {
+              const exists = prev.some((p) => p.uid === programare.uid);
+              if (!exists) {
+                return sortProgramariByCreatedAt([...prev, programare]);
+              }
+              if (programare.active && programare.active.status === false) {
+                return sortProgramariByCreatedAt(
+                  prev.map((p) => (p.uid === programare.uid ? programare : p))
+                );
+              }
+              return sortProgramariByCreatedAt(
                 prev.map((p) => (p.uid === programare.uid ? programare : p))
-              )
-            );
+              );
+            });
           }
           break;
         case "delete":
@@ -249,10 +260,12 @@ function MyBooks() {
         default:
           console.warn("Unknown action type:", action);
       }
-    });
+    };
+
+    socket.on("programare", handleProgramareEvent);
 
     return () => {
-      socket.off("programare");
+      socket.off("programare", handleProgramareEvent);
     };
   }, [socket, user]);
 

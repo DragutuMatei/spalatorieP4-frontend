@@ -516,16 +516,18 @@ function Admin() {
       };
 
       const handleUserUpdate = (data) => {
-        if (
-          data.action === "approval_changed" ||
-          data.action === "role_changed"
-        ) {
-          setUsers((prev) =>
-            prev.map((u) => (u.uid === data.userId ? data.user : u))
-          );
-        } else if (data.action === "delete") {
-          setUsers((prev) => prev.filter((u) => u.uid !== data.userId));
-        }
+        setUsers((prev) => {
+          if (data.action === "delete") {
+            return prev.filter((u) => u.uid !== data.userId);
+          }
+
+          const exists = prev.some((u) => u.uid === data.userId);
+          if (exists) {
+            return prev.map((u) => (u.uid === data.userId ? data.user : u));
+          }
+
+          return [data.user, ...prev];
+        });
       };
 
       socket.on("settings", handleSettingsUpdate);
