@@ -5,6 +5,7 @@ import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+import isBetween from "dayjs/plugin/isBetween";
 import "dayjs/locale/ro";
 import { useAuth } from "../utils/AuthContext";
 import { toast_error, toast_success, toast_warn } from "../utils/Toasts";
@@ -15,6 +16,7 @@ import "./Home.scss";
 dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.extend(customParseFormat);
+dayjs.extend(isBetween);
 dayjs.locale("ro");
 
 const BUCURESTI_TZ = "Europe/Bucharest";
@@ -922,10 +924,24 @@ function Home({ userApproved = false }) {
     }
   };
 
+  const resolveDryerStart = useCallback(() => {
+    const selectedDate = dayjs(value).tz(BUCURESTI_TZ);
+    if (!selectedDate.isValid()) {
+      return null;
+    }
+
+    const nowBucharest = dayjs().tz(BUCURESTI_TZ);
+    return selectedDate
+      .hour(nowBucharest.hour())
+      .minute(nowBucharest.minute())
+      .second(0)
+      .millisecond(0);
+  }, [value]);
+
   const dryerDurationTotalMinutes = useMemo(() => {
-    const hours = Number.isFinite(+(dryerDurationHours || 0))
-      ? Number(dryerDurationHours)
-      : 0;
+    const parsedHours = Number(dryerDurationHours);
+    const hours = Number.isFinite(parsedHours) ? parsedHours : 0;
+
     const minutesParsed =
       dryerDurationMinutes === ""
         ? NaN
@@ -933,37 +949,91 @@ function Home({ userApproved = false }) {
     const minutes = Number.isFinite(minutesParsed) ? minutesParsed : 0;
     return hours * 60 + minutes;
   }, [dryerDurationHours, dryerDurationMinutes]);
+  const upcomingDryerMaintenance = useMemo(() => {
+    if (!maintenanceIntervals?.length) {
+      return [];
+    }
+
+    return maintenanceIntervals
+      .filter((interval) => interval.machine === DRYER_MACHINE)
+      .map((interval) => {
+        const startTime = interval.startTime || interval.start_interval_time;
+        const endTime = interval.endTime || interval.final_interval_time;
+        return {
+          ...interval,
+          intervalStart: startTime
+            ? toBucharestDayjs(`${interval.date} ${startTime}`)
+            : dayjs(NaN),
+          intervalEnd: endTime
+            ? toBucharestDayjs(`${interval.date} ${endTime}`)
+            : dayjs(NaN),
+        };
+      })
+      .filter(
+        (interval) => interval.intervalStart.isValid() && interval.intervalEnd.isValid()
+      )
+      .sort((a, b) => a.intervalStart.valueOf() - b.intervalStart.valueOf());
+  }, [maintenanceIntervals]);
 
   const validateDryerDuration = useCallback(
     (hoursValue, minutesValue) => {
-      const hrs = Number.isFinite(hoursValue) ? hoursValue : 0;
-      let mins = 0;
-      if (minutesValue === null || minutesValue === undefined) {
-        mins = 0;
-      } else if (Number.isFinite(minutesValue)) {
-        mins = minutesValue;
-      } else if (Number.isFinite(Number(minutesValue))) {
-        mins = Number(minutesValue);
-      }
+      const parsedHours = Number(hoursValue);
+      const hrs = Number.isFinite(parsedHours) ? parsedHours : 0;
+
+      const parsedMinutes = Number(minutesValue);
+      const mins = Number.isFinite(parsedMinutes) ? parsedMinutes : 0;
 
       if (hrs === 0 && mins === 0) {
         setDryerDurationError("Durata trebuie să fie mai mare de 0 minute.");
         return false;
       }
+
       if (hrs > DRYER_MAX_HOURS || hrs < 0) {
         setDryerDurationError(
           `Durata maximă este de ${DRYER_MAX_HOURS} ore.`
         );
         return false;
       }
+
       if (mins < 0 || mins >= 60) {
         setDryerDurationError("Minutele trebuie să fie între 0 și 59.");
         return false;
       }
+
+      const totalMinutes = hrs * 60 + mins;
+      const start = resolveDryerStart();
+
+      if (start) {
+        const end = start.add(totalMinutes, "minute");
+        const maintenanceOverlap = upcomingDryerMaintenance.find(
+          (interval) =>
+            interval.date === start.format("DD/MM/YYYY") &&
+            interval.intervalStart.isBefore(end) &&
+            interval.intervalEnd.isAfter(start)
+        );
+
+        if (maintenanceOverlap) {
+          const startLabel = maintenanceOverlap.intervalStart.format("HH:mm");
+          const endLabel = maintenanceOverlap.intervalEnd.format("HH:mm");
+          setDryerDurationError(
+            `Durata se suprapune cu mentenanța programată ${startLabel}-${endLabel}.`
+          );
+          return false;
+        }
+
+        const endOfDay = start.endOf("day");
+        if (end.isAfter(endOfDay)) {
+          setDryerDurationError(
+            "Durata aleasă depășește ziua curentă. Selectează o durată care se încheie înainte de 23:59."
+          );
+          return false;
+        }
+      }
+
       setDryerDurationError(null);
       return true;
     },
-    []
+    [resolveDryerStart, upcomingDryerMaintenance]
   );
 
   const debounceDryerValidation = useCallback(
@@ -979,6 +1049,7 @@ function Home({ userApproved = false }) {
     [validateDryerDuration]
   );
 
+ 
   const handleDryerHoursChange = useCallback(
     (event) => {
       const rawValue = event.target.value;
@@ -1048,20 +1119,6 @@ function Home({ userApproved = false }) {
     [debounceDryerValidation, dryerDurationHours]
   );
 
-  const resolveDryerStart = useCallback(() => {
-    const selectedDate = dayjs(value).tz(BUCURESTI_TZ);
-    if (!selectedDate.isValid()) {
-      return null;
-    }
-
-    const nowBucharest = dayjs().tz(BUCURESTI_TZ);
-    return selectedDate
-      .hour(nowBucharest.hour())
-      .minute(nowBucharest.minute())
-      .second(0)
-      .millisecond(0);
-  }, [value]);
-
   const dryerDraftTiming = useMemo(() => {
     if (!isDryerSelected || dryerDurationTotalMinutes <= 0) {
       return { start: null, end: null };
@@ -1071,13 +1128,31 @@ function Home({ userApproved = false }) {
     if (!start) {
       return { start: null, end: null };
     }
+
     const end = start.add(dryerDurationTotalMinutes, "minute");
+    const endOfDay = start.endOf("day");
+    const earliestMaintenanceOverlap = upcomingDryerMaintenance.find(
+      (interval) =>
+        interval.date === start.format("DD/MM/YYYY") &&
+        interval.intervalStart.isBefore(end) &&
+        interval.intervalEnd.isAfter(start)
+    );
+
+    if (earliestMaintenanceOverlap) {
+      return { start, end: earliestMaintenanceOverlap.intervalStart }; // strictly before maintenance
+    }
+
+    if (end.isAfter(endOfDay)) {
+      return { start, end: endOfDay };
+    }
+
     return { start, end };
   }, [
     isDryerSelected,
     dryerDurationTotalMinutes,
     dryerStatusTick,
     resolveDryerStart,
+    upcomingDryerMaintenance,
   ]);
 
   useEffect(() => {
@@ -1313,14 +1388,7 @@ function Home({ userApproved = false }) {
     isAnotherUserEditingDryer,
   ]);
 
-  const dryerTileStatus = useMemo(() => {
-    if (!dryerEnabled) {
-      return "Uscător indisponibil";
-    }
-    if (dryerMaintenanceActive) {
-      return "Mentenanță în curs";
-    }
-    if (dryerActiveBooking) {
+  const dryerTileStatus = useMemo(() => {if (dryerActiveBooking) {
       const until = dryerEndsAtLabel ? ` până la ${dryerEndsAtLabel}` : "";
       return `Ocupat de ${dryerOccupantName}${dryerOccupantRoom}${until}`;
     }
@@ -1329,6 +1397,26 @@ function Home({ userApproved = false }) {
         liveDryerSelection.camera || "?"
       })`;
     }
+    if (!dryerEnabled) {
+      return "Uscător indisponibil";
+    }
+    if (dryerMaintenanceActive) {
+      return "Mentenanță în curs";
+    }
+
+    const selectedDay = dayjs(value).tz(BUCURESTI_TZ).format("DD/MM/YYYY");
+    const maintenanceToday = upcomingDryerMaintenance.filter(
+      (interval) => interval.date === selectedDay
+    );
+
+    if (maintenanceToday.length) {
+      const nextInterval = maintenanceToday[0];
+      const startLabel = nextInterval.intervalStart.format("HH:mm");
+      const endLabel = nextInterval.intervalEnd.format("HH:mm");
+      return `Mentenanță programată ${startLabel}-${endLabel}`;
+    }
+
+    
     return "Disponibil";
   }, [
     dryerEnabled,
@@ -1339,6 +1427,8 @@ function Home({ userApproved = false }) {
     dryerOccupantRoom,
     isAnotherUserEditingDryer,
     liveDryerSelection,
+    upcomingDryerMaintenance,
+    value,
   ]);
 
   const canSubmitDryer =
@@ -1388,8 +1478,10 @@ function Home({ userApproved = false }) {
 
     if (isDryer) {
       if (!dryerSelectable) {
+        toast_warn("Uscătorul nu este disponibil momentan.");
         return;
       }
+      window.scrollTo(0, 0);
 
       setValue(todayBucharest.toDate());
       setSelectedMachine(DRYER_MACHINE);
