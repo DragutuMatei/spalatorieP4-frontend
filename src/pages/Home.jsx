@@ -73,7 +73,7 @@ function Home({ userApproved = false }) {
   const [maintenanceIntervals, setMaintenanceIntervals] = useState([]);
   const [selectedBookingDetails, setSelectedBookingDetails] = useState(null);
   const [blockPastSlotsEnabled, setBlockPastSlotsEnabled] = useState(false);
-  const [dryerDurationHours, setDryerDurationHours] = useState(1);
+  const [dryerDurationHours, setDryerDurationHours] = useState("");
   const [dryerDurationMinutes, setDryerDurationMinutes] = useState("");
   const [dryerSubmitting, setDryerSubmitting] = useState(false);
   const [dryerStatusTick, setDryerStatusTick] = useState(Date.now());
@@ -981,29 +981,33 @@ function Home({ userApproved = false }) {
 
   const handleDryerHoursChange = useCallback(
     (event) => {
-      const rawValue = event.target.value.trim();
-      const parsed = Number.parseInt(rawValue, 10);
-      if (Number.isNaN(parsed)) {
-        setDryerDurationHours(0);
-        const currentMinutes =
-          dryerDurationMinutes === ""
-            ? null
-            : Number.parseInt(dryerDurationMinutes, 10);
-        debounceDryerValidation(0, currentMinutes);
+      const rawValue = event.target.value;
+
+      if (rawValue === "") {
+        setDryerDurationHours("");
+        debounceDryerValidation(0, Number(dryerDurationMinutes) || 0);
         setDryerStatusTick(Date.now());
         return;
       }
 
-      const clamped = Math.min(Math.max(parsed, 0), DRYER_MAX_HOURS);
-      if (clamped !== parsed) {
+      const numericValue = Number(rawValue);
+      if (Number.isNaN(numericValue)) {
+        return;
+      }
+
+      const clampedValue = Math.max(0, Math.min(DRYER_MAX_HOURS, numericValue));
+      if (clampedValue !== numericValue) {
         toast_warn(`Orele trebuie să fie între 0 și ${DRYER_MAX_HOURS}.`);
       }
-      setDryerDurationHours(clamped);
+
+      setDryerDurationHours(clampedValue.toString());
       const currentMinutes =
         dryerDurationMinutes === ""
-          ? null
-          : Number.parseInt(dryerDurationMinutes, 10);
-      debounceDryerValidation(clamped, currentMinutes);
+          ? 0
+          : Number.isNaN(Number(dryerDurationMinutes))
+          ? 0
+          : Number(dryerDurationMinutes);
+      debounceDryerValidation(clampedValue, currentMinutes);
       setDryerStatusTick(Date.now());
     },
     [debounceDryerValidation, dryerDurationMinutes]
@@ -1011,24 +1015,34 @@ function Home({ userApproved = false }) {
 
   const handleDryerMinutesChange = useCallback(
     (event) => {
-      const rawValue = event.target.value.trimStart();
+      const rawValue = event.target.value;
+
       if (rawValue === "") {
         setDryerDurationMinutes("");
-        debounceDryerValidation(Number(dryerDurationHours), null);
+        const currentHours = Number.isNaN(Number(dryerDurationHours))
+          ? 0
+          : Number(dryerDurationHours);
+        debounceDryerValidation(currentHours, 0);
         setDryerStatusTick(Date.now());
         return;
       }
 
-      let parsed = Number.parseInt(rawValue, 10);
-
-      if (parsed < 0) {
-        parsed = 0;
-      } else if (parsed > 59) {
-        parsed = 59;
+      const numericValue = Number(rawValue);
+      if (Number.isNaN(numericValue)) {
+        return;
       }
 
-      setDryerDurationMinutes(String(parsed));
-      debounceDryerValidation(Number(dryerDurationHours), parsed);
+      const clampedValue = Math.max(0, Math.min(59, numericValue));
+      if (clampedValue !== numericValue) {
+        toast_warn("Minutele trebuie să fie între 0 și 59.");
+      }
+
+      const formattedValue = clampedValue.toString().padStart(2, "0");
+      setDryerDurationMinutes(formattedValue);
+      const currentHours = Number.isNaN(Number(dryerDurationHours))
+        ? 0
+        : Number(dryerDurationHours);
+      debounceDryerValidation(currentHours, clampedValue);
       setDryerStatusTick(Date.now());
     },
     [debounceDryerValidation, dryerDurationHours]
