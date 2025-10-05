@@ -202,7 +202,7 @@ function Admin() {
         }));
       }
     } catch (error) {
-      console.log(error);
+      console.error(error);
       if (error?.response?.status !== 404) {
         toast_error("Nu s-au putut încărca setările!");
       }
@@ -215,10 +215,8 @@ function Admin() {
       const response = await AXIOS.post("/api/programari/cleanup", { scope });
       if (response.data.success) {
         toast_success(
-          `Curățare ${scope === "local" ? "locală" : "oficială"} completă: ${
-            response.data.deletedProgramari
-          } programări și ${
-            response.data.deletedNotifications
+          `Curățare ${scope === "local" ? "locală" : "oficială"} completă: ${response.data.deletedProgramari
+          } programări și ${response.data.deletedNotifications
           } notificări șterse.`
         );
         await getBookings();
@@ -242,7 +240,7 @@ function Admin() {
         setUsers(rasp.data.users);
       }
     } catch (error) {
-      console.log(error);
+      console.error(error);
       if (error?.response?.status !== 404) {
         toast_error("Nu s-au putut încărca utilizatorii!");
       }
@@ -253,12 +251,11 @@ function Admin() {
   const getBookings = async () => {
     try {
       const rasp = await AXIOS.get("/api/programare");
-      console.log("Bookings response:", rasp.data);
       if (rasp.data.success) {
         setBookings(sortByCreatedAtDesc(rasp.data.programari || []));
       }
     } catch (error) {
-      console.log("Bookings error:", error);
+      console.error("Bookings error:", error);
       if (error?.response?.status !== 404) {
         toast_error("Nu s-au putut încărca programările!");
       }
@@ -269,12 +266,11 @@ function Admin() {
   const getMaintenanceIntervals = async () => {
     try {
       const rasp = await AXIOS.get("/api/maintenance");
-      console.log("Maintenance intervals response:", rasp.data);
       if (rasp.data.success) {
         setMaintenanceIntervals(rasp.data.maintenanceIntervals || []);
       }
     } catch (error) {
-      console.log("Maintenance intervals error:", error);
+      console.error("Maintenance intervals error:", error);
       if (error?.response?.status !== 404) {
         toast_error("Nu s-au putut încărca intervalele de mentenanță!");
       }
@@ -283,30 +279,46 @@ function Admin() {
   };
 
   const saveSettings = async (key, value) => {
-    console.log("Saving setting:", key, value);
+    if (savingSetting === key) {
+      return;
+    }
+
+    const previousValue = settings[key];
+
     setSavingSetting(key);
+    setSettings((prev) => ({
+      ...prev,
+      [key]: key === "blockPastSlots" ? Boolean(value) : value,
+    }));
+
     try {
       const rasp = await AXIOS.post("/api/settings", { key, value });
-      console.log("Settings response:", rasp.data);
       if (rasp.data.success) {
+        setSettings((prev) => ({
+          ...prev,
+          ...rasp.data.settings,
+          blockPastSlots: Boolean(rasp.data.settings.blockPastSlots),
+        }));
         // Nu actualizez local - las socket-ul să facă update-ul pentru live data
         toast_success(
           key === "blockPastSlots"
-            ? `Rezervările în trecut au fost ${
-                value ? "blocate" : "deblocate"
-              }!`
-            : `Programările pentru ${
-                key === "m1Enabled"
-                  ? "M1"
-                  : key === "m2Enabled"
-                  ? "M2"
-                  : "Uscător"
-              } au fost ${value ? "activate" : "dezactivate"}!`
+            ? `Rezervările în trecut au fost ${value ? "blocate" : "deblocate"
+            }!`
+            : `Programările pentru ${key === "m1Enabled"
+              ? "M1"
+              : key === "m2Enabled"
+                ? "M2"
+                : "Uscător"
+            } au fost ${value ? "activate" : "dezactivate"}!`
         );
       }
     } catch (error) {
-      console.log("Settings error:", error);
+      console.error("Settings error:", error);
       toast_error("Eroare la salvarea setărilor!");
+      setSettings((prev) => ({
+        ...prev,
+        [key]: key === "blockPastSlots" ? Boolean(previousValue) : previousValue,
+      }));
     } finally {
       setSavingSetting(null);
     }
@@ -325,7 +337,7 @@ function Admin() {
         toast_success(`Cont ${!currentApproval ? "aprobat" : "dezaprobat"}!`);
       }
     } catch (error) {
-      console.log(error);
+      console.error(error);
       toast_error("Eroare la actualizarea aprobării!");
     } finally {
       setUserActionLoading((prev) => {
@@ -350,7 +362,7 @@ function Admin() {
         toast_success("Rol actualizat!");
       }
     } catch (error) {
-      console.log(error);
+      console.error(error);
       toast_error("Eroare la actualizarea rolului!");
     } finally {
       setUserActionLoading((prev) => {
@@ -383,7 +395,7 @@ function Admin() {
         toast_success("Rezervare anulată și notificare trimisă!");
       }
     } catch (error) {
-      console.log(error);
+      console.error(error);
       toast_error("Eroare la anularea rezervării!");
     } finally {
       setBookingActionLoading((prev) => {
@@ -395,21 +407,14 @@ function Admin() {
   };
 
   const handleMaintenanceSubmit = async () => {
-    if (!maintenanceMachine || maintenanceSlots.length === 0) {
-      toast_error("Selectează mașina și cel puțin un slot pentru mentenanță!");
+    if (!maintenanceMachine || maintenanceSlots.length <= 1) {
+      toast_error("Selectează mașina și cel puțin 2 sloturi pentru mentenanță!");
       return;
     }
 
     setMaintenanceSubmitting(true);
     try {
       const dateToSend = dayjs(maintenanceDate).format("DD/MM/YYYY");
-      console.log("Sending maintenance data:", {
-        machine: maintenanceMachine,
-        date: dateToSend,
-        startTime: maintenanceSlots[0],
-        endTime: maintenanceSlots[maintenanceSlots.length - 1],
-        slots: maintenanceSlots,
-      });
 
       const rasp = await AXIOS.post("/api/maintenance", {
         machine: maintenanceMachine,
@@ -419,8 +424,6 @@ function Admin() {
         slots: maintenanceSlots,
       });
 
-      console.log("Maintenance response:", rasp.data);
-
       if (rasp.data.success) {
         toast_success("Interval de mentenanță adăugat și rezervările anulate!");
         setMaintenanceMachine("");
@@ -429,7 +432,7 @@ function Admin() {
         getBookings();
       }
     } catch (error) {
-      console.log("Maintenance error:", error);
+      console.error("Maintenance error:", error);
       toast_error("Eroare la adăugarea mentenanței!");
     } finally {
       setMaintenanceSubmitting(false);
@@ -447,7 +450,7 @@ function Admin() {
         toast_success("Interval de mentenanță șters!");
       }
     } catch (error) {
-      console.log(error);
+      console.error(error);
       toast_error("Eroare la ștergerea mentenanței!");
     } finally {
       setMaintenanceDeleting((prev) => {
@@ -496,16 +499,12 @@ function Admin() {
 
   useEffect(() => {
     if (socket) {
-      console.log("Socket connected:", socket.connected);
-
       const handleSettingsUpdate = (data) => {
-        console.log("Admin received settings update:", data);
         if (
           data.action === "update" &&
           data.settings &&
           data.settings.settings
         ) {
-          console.log("Updating admin settings with:", data.settings.settings);
           // Actualizez toate setările pentru live update
           setSettings((prev) => ({
             ...prev,
@@ -610,25 +609,25 @@ function Admin() {
   const currentDate = dayjs().startOf("day");
   const displayedBookings = showActiveBookings
     ? bookings.filter((booking) => {
-        if (!booking.date) return false;
-        try {
-          // Handle both ISO format and DD/MM/YYYY format
-          let bookingDate;
-          if (typeof booking.date === "string" && booking.date.includes("T")) {
-            // ISO format
-            bookingDate = dayjs(booking.date);
-          } else {
-            // DD/MM/YYYY format
-            bookingDate = dayjs(booking.date, "DD/MM/YYYY");
-          }
-          return (
-            bookingDate.isValid() && bookingDate.isSameOrAfter(currentDate)
-          );
-        } catch (error) {
-          console.warn("Invalid booking date:", booking.date);
-          return false;
+      if (!booking.date) return false;
+      try {
+        // Handle both ISO format and DD/MM/YYYY format
+        let bookingDate;
+        if (typeof booking.date === "string" && booking.date.includes("T")) {
+          // ISO format
+          bookingDate = dayjs(booking.date);
+        } else {
+          // DD/MM/YYYY format
+          bookingDate = dayjs(booking.date, "DD/MM/YYYY");
         }
-      })
+        return (
+          bookingDate.isValid() && bookingDate.isSameOrAfter(currentDate)
+        );
+      } catch (error) {
+        console.warn("Invalid booking date:", booking.date);
+        return false;
+      }
+    })
     : bookings;
 
   const filteredUsers = users.filter((adminUser) => {
@@ -663,7 +662,7 @@ function Admin() {
               className="admin-icon"
               width={30}
               height={30}
-              viewBox="0 0 24 24"
+              viewBoxwBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
             >
@@ -692,9 +691,8 @@ function Admin() {
               Setări Disponibilitate
             </h2>
             <svg
-              className={`toggle-icon ${
-                expandedSections.settings ? "toggle-icon--expanded" : ""
-              }`}
+              className={`toggle-icon ${expandedSections.settings ? "toggle-icon--expanded" : ""
+                }`}
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -703,11 +701,10 @@ function Admin() {
             </svg>
           </div>
           <div
-            className={`admin__section-content ${
-              !expandedSections.settings
+            className={`admin__section-content ${!expandedSections.settings
                 ? "admin__section-content--collapsed"
                 : ""
-            }`}
+              }`}
           >
             <div className="admin__settings">
               <div className="admin__settings-item">
@@ -723,9 +720,8 @@ function Admin() {
                   </span>
                 </div>
                 <div
-                  className={`toggle ${
-                    settings.m1Enabled ? "toggle--active" : ""
-                  }`}
+                  className={`toggle ${settings.m1Enabled ? "toggle--active" : ""
+                    }`}
                   onClick={() => saveSettings("m1Enabled", !settings.m1Enabled)}
                 />
               </div>
@@ -743,9 +739,8 @@ function Admin() {
                   </span>
                 </div>
                 <div
-                  className={`toggle ${
-                    settings.m2Enabled ? "toggle--active" : ""
-                  }`}
+                  className={`toggle ${settings.m2Enabled ? "toggle--active" : ""
+                    }`}
                   onClick={() => saveSettings("m2Enabled", !settings.m2Enabled)}
                 />
               </div>
@@ -762,9 +757,8 @@ function Admin() {
                   </span>
                 </div>
                 <div
-                  className={`toggle ${
-                    settings.dryerEnabled ? "toggle--active" : ""
-                  }`}
+                  className={`toggle ${settings.dryerEnabled ? "toggle--active" : ""
+                    }`}
                   onClick={() =>
                     saveSettings("dryerEnabled", !settings.dryerEnabled)
                   }
@@ -783,9 +777,8 @@ function Admin() {
                   </span>
                 </div>
                 <div
-                  className={`toggle ${
-                    settings.blockPastSlots ? "toggle--active" : ""
-                  }`}
+                  className={`toggle ${settings.blockPastSlots ? "toggle--active" : ""
+                    }`}
                   onClick={() =>
                     saveSettings("blockPastSlots", !settings.blockPastSlots)
                   }
@@ -816,9 +809,8 @@ function Admin() {
               Curățare manuală date
             </h2>
             <svg
-              className={`toggle-icon ${
-                expandedSections.cleanup ? "toggle-icon--expanded" : ""
-              }`}
+              className={`toggle-icon ${expandedSections.cleanup ? "toggle-icon--expanded" : ""
+                }`}
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -827,11 +819,10 @@ function Admin() {
             </svg>
           </div>
           <div
-            className={`admin__section-content ${
-              !expandedSections.cleanup
+            className={`admin__section-content ${!expandedSections.cleanup
                 ? "admin__section-content--collapsed"
                 : ""
-            }`}
+              }`}
           >
             <p>
               Șterge rezervările și notificările mai vechi de 7 zile din
@@ -892,9 +883,8 @@ function Admin() {
               Mentenanță
             </h2>
             <svg
-              className={`toggle-icon ${
-                expandedSections.maintenance ? "toggle-icon--expanded" : ""
-              }`}
+              className={`toggle-icon ${expandedSections.maintenance ? "toggle-icon--expanded" : ""
+                }`}
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -903,11 +893,10 @@ function Admin() {
             </svg>
           </div>
           <div
-            className={`admin__section-content ${
-              !expandedSections.maintenance
+            className={`admin__section-content ${!expandedSections.maintenance
                 ? "admin__section-content--collapsed"
                 : ""
-            }`}
+              }`}
           >
             <div className="admin__maintenance-form">
               <h3>Adaugă interval mentenanță</h3>
@@ -947,11 +936,10 @@ function Admin() {
                 {generateTimeSlots().map((slot) => (
                   <div
                     key={slot}
-                    className={`time-slot ${
-                      maintenanceSlots.includes(slot)
+                    className={`time-slot ${maintenanceSlots.includes(slot)
                         ? "time-slot--selected"
                         : ""
-                    }`}
+                      }`}
                     onClick={() => toggleMaintenanceSlot(slot)}
                   >
                     {slot}
@@ -1043,9 +1031,8 @@ function Admin() {
               Utilizatori ({users.length})
             </h2>
             <svg
-              className={`toggle-icon ${
-                expandedSections.users ? "toggle-icon--expanded" : ""
-              }`}
+              className={`toggle-icon ${expandedSections.users ? "toggle-icon--expanded" : ""
+                }`}
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -1054,9 +1041,8 @@ function Admin() {
             </svg>
           </div>
           <div
-            className={`admin__section-content ${
-              !expandedSections.users ? "admin__section-content--collapsed" : ""
-            }`}
+            className={`admin__section-content ${!expandedSections.users ? "admin__section-content--collapsed" : ""
+              }`}
           >
             <div className="admin__search">
               <svg
@@ -1108,9 +1094,8 @@ function Admin() {
                           <td>
                             <div className="admin__actions">
                               <button
-                                className={`btn ${
-                                  user.validate ? "btn-danger" : "btn-success"
-                                }`}
+                                className={`btn ${user.validate ? "btn-danger" : "btn-success"
+                                  }`}
                                 onClick={() => {
                                   if (userActionLoading[`${user.uid}-approval`])
                                     return;
@@ -1192,9 +1177,8 @@ function Admin() {
               Programări ({bookings.length})
             </h2>
             <svg
-              className={`toggle-icon ${
-                expandedSections.bookings ? "toggle-icon--expanded" : ""
-              }`}
+              className={`toggle-icon ${expandedSections.bookings ? "toggle-icon--expanded" : ""
+                }`}
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -1203,11 +1187,10 @@ function Admin() {
             </svg>
           </div>
           <div
-            className={`admin__section-content ${
-              !expandedSections.bookings
+            className={`admin__section-content ${!expandedSections.bookings
                 ? "admin__section-content--collapsed"
                 : ""
-            }`}
+              }`}
           >
             <div className="admin__filters">
               <input
@@ -1265,9 +1248,9 @@ function Admin() {
                               {booking.duration
                                 ? `${safeRender(booking.duration)} min`
                                 : `${calculateDuration(
-                                    booking.start_interval_time,
-                                    booking.final_interval_time
-                                  )} min`}
+                                  booking.start_interval_time,
+                                  booking.final_interval_time
+                                )} min`}
                             </td>
                             <td>{safeRender(booking.user?.numeComplet)}</td>
                             <td>{safeRender(booking.user?.camera)}</td>

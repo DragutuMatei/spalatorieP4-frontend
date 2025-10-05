@@ -24,6 +24,9 @@ const DRYER_MACHINE = "Uscator";
 const DRYER_MAX_HOURS = 9;
 const DRYER_SELECTION_DEBOUNCE_MS = 300;
 
+const getMaintenanceUid = (interval = {}) =>
+  interval.uid || interval.id || interval.maintenanceId || interval.docId || null;
+
 const toBucharestDayjs = (value) => {
   if (value === undefined || value === null) {
     return dayjs(NaN);
@@ -141,7 +144,6 @@ function Home({ userApproved = false }) {
         },
       });
     }
-    console.log(realStates);
     // Aplică programările și rezervările temporare pe noile ore
     usersProgramari.forEach((pr) => {
       if (
@@ -469,23 +471,42 @@ function Home({ userApproved = false }) {
 
     // Listener pentru când un utilizator se conectează
     socket.on("userConnected", (data) => {
-      console.log("User connected, requesting sync");
-      // Solicită sincronizarea rezervărilor temporare
+      // Solicită sincronizarea rezervărililor temporare
       socket.emit("requestTempReservationsSync");
     });
     socket.on("settings", (data) => {
-      console.log("Home received settings:", data);
-      if (data.settings.success) {
-        console.log("Updating realStates with:", data.settings.settings);
-        setRealStates({
-          M1: data.settings.settings.m1Enabled,
-          M2: data.settings.settings.m2Enabled,
-          Uscator: data.settings.settings.dryerEnabled,
-        });
-        setBlockPastSlotsEnabled(
-          Boolean(data.settings.settings.blockPastSlots)
-        );
+      const payload =
+        data?.settings?.settings ?? data?.settings ?? data ?? null;
+
+      if (!payload) {
+        console.warn("Settings payload missing, refetching...");
+        getSettings();
+        return;
       }
+
+      const {
+        m1Enabled,
+        m2Enabled,
+        dryerEnabled,
+        blockPastSlots,
+      } = payload;
+
+      if (
+        typeof m1Enabled === "undefined" &&
+        typeof m2Enabled === "undefined" &&
+        typeof dryerEnabled === "undefined"
+      ) {
+        console.warn("Settings payload incomplete, refetching...");
+        getSettings();
+        return;
+      }
+
+      setRealStates({
+        M1: Boolean(m1Enabled),
+        M2: Boolean(m2Enabled),
+        Uscator: Boolean(dryerEnabled),
+      });
+      setBlockPastSlotsEnabled(Boolean(blockPastSlots));
     });
 
     // Listener pentru maintenance intervals
@@ -493,16 +514,26 @@ function Home({ userApproved = false }) {
       switch (data.action) {
         case "create":
           if (data.maintenanceInterval) {
-            setMaintenanceIntervals((prev) => [
-              ...prev,
-              data.maintenanceInterval,
-            ]);
+            const normalized = {
+              ...data.maintenanceInterval,
+              uid: getMaintenanceUid(data.maintenanceInterval),
+            };
+
+            setMaintenanceIntervals((prev) => {
+              const next = prev.filter(
+                (interval) =>
+                  getMaintenanceUid(interval) !== getMaintenanceUid(normalized)
+              );
+              return [...next, normalized];
+            });
           }
           break;
         case "delete":
           if (data.maintenanceId) {
             setMaintenanceIntervals((prev) =>
-              prev.filter((interval) => interval.uid !== data.maintenanceId)
+              prev.filter(
+                (interval) => getMaintenanceUid(interval) !== data.maintenanceId
+              )
             );
           }
           break;
@@ -594,7 +625,11 @@ function Home({ userApproved = false }) {
       socket.off("userUpdate");
     };
   }, [socket, user]);
-
+  useEffect(() => {
+    return () => {
+      socket.off("settings");
+    };
+  }, []);
   // Funcție pentru a verifica dacă un slot este rezervat temporar de alți useri
   const isSlotTempReservedByOthers = (hourIndex, machine) => {
     if (!user?.uid) return false;
