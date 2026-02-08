@@ -46,11 +46,11 @@ $error: #ef4444;
 $info: $primary-blue;
 
 // Breakpoints - 6 mărimi de ecran
-$xs: 320px;   // Extra small (telefoane mici)
-$sm: 480px;   // Small (telefoane)
-$md: 768px;   // Medium (tablete)
-$lg: 1024px;  // Large (laptop-uri mici)
-$xl: 1280px;  // Extra large (desktop)
+$xs: 320px; // Extra small (telefoane mici)
+$sm: 480px; // Small (telefoane)
+$md: 768px; // Medium (tablete)
+$lg: 1024px; // Large (laptop-uri mici)
+$xl: 1280px; // Extra large (desktop)
 $xxl: 1440px; // Extra extra large (ecrane mari)
 
 // Legacy breakpoints (pentru compatibilitate)
@@ -200,13 +200,13 @@ $z-tooltip: 1070;
 }
 
 @mixin tablet {
-  @media (min-width: #{$mobile}) and (max-width: #{$tablet - 1px}) {
+  @media (min-width: #{$mobile}) and (max-width: #{$desktop - 1px}) {
     @content;
   }
 }
 
 @mixin desktop {
-  @media (min-width: #{$tablet}) {
+  @media (min-width: #{$desktop}) {
     @content;
   }
 }
@@ -227,7 +227,7 @@ $z-tooltip: 1070;
 
 @mixin hover-lift {
   transition: transform $transition-fast, box-shadow $transition-fast;
-  
+
   &:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px 0 var(--shadow-color), 0 2px 4px 0 var(--shadow-color);

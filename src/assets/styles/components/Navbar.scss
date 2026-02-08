@@ -1,31 +1,132 @@
 @import '../variables.scss';
 
 // Utility classes pentru responsive display
-.d-xs-none { @include xs { display: none !important; } }
-.d-sm-none { @include sm { display: none !important; } }
-.d-md-none { @include md { display: none !important; } }
-.d-lg-none { @include lg { display: none !important; } }
-.d-xl-none { @include xl { display: none !important; } }
-.d-xxl-none { @include xxl { display: none !important; } }
+.d-xs-none {
+  @include xs {
+    display: none !important;
+  }
+}
 
-.d-xs-block { @include xs { display: block !important; } }
-.d-sm-block { @include sm { display: block !important; } }
-.d-md-block { @include md { display: block !important; } }
-.d-lg-block { @include lg { display: block !important; } }
-.d-xl-block { @include xl { display: block !important; } }
-.d-xxl-block { @include xxl { display: block !important; } }
+.d-sm-none {
+  @include sm {
+    display: none !important;
+  }
+}
 
-.d-xs-flex { @include xs { display: flex !important; } }
-.d-sm-flex { @include sm { display: flex !important; } }
-.d-md-flex { @include md { display: flex !important; } }
-.d-lg-flex { @include lg { display: flex !important; } }
-.d-xl-flex { @include xl { display: flex !important; } }
-.d-xxl-flex { @include xxl { display: flex !important; } }
+.d-md-none {
+  @include md {
+    display: none !important;
+  }
+}
+
+.d-lg-none {
+  @include lg {
+    display: none !important;
+  }
+}
+
+.d-xl-none {
+  @include xl {
+    display: none !important;
+  }
+}
+
+.d-xxl-none {
+  @include xxl {
+    display: none !important;
+  }
+}
+
+.d-xs-block {
+  @include xs {
+    display: block !important;
+  }
+}
+
+.d-sm-block {
+  @include sm {
+    display: block !important;
+  }
+}
+
+.d-md-block {
+  @include md {
+    display: block !important;
+  }
+}
+
+.d-lg-block {
+  @include lg {
+    display: block !important;
+  }
+}
+
+.d-xl-block {
+  @include xl {
+    display: block !important;
+  }
+}
+
+.d-xxl-block {
+  @include xxl {
+    display: block !important;
+  }
+}
+
+.d-xs-flex {
+  @include xs {
+    display: flex !important;
+  }
+}
+
+.d-sm-flex {
+  @include sm {
+    display: flex !important;
+  }
+}
+
+.d-md-flex {
+  @include md {
+    display: flex !important;
+  }
+}
+
+.d-lg-flex {
+  @include lg {
+    display: flex !important;
+  }
+}
+
+.d-xl-flex {
+  @include xl {
+    display: flex !important;
+  }
+}
+
+.d-xxl-flex {
+  @include xxl {
+    display: flex !important;
+  }
+}
 
 // Legacy classes
-.d-mobile-none { @include mobile { display: none !important; } }
-.d-tablet-none { @include tablet { display: none !important; } }
-.d-desktop-none { @include desktop { display: none !important; } }
+.d-mobile-none {
+  @include mobile {
+    display: none !important;
+  }
+}
+
+.d-tablet-none {
+  @include tablet {
+    display: none !important;
+  }
+}
+
+.d-desktop-none {
+  @include desktop {
+    display: none !important;
+  }
+}
 
 .navbar {
   background-color: var(--bg-primary);
@@ -93,7 +194,7 @@
     font-size: clamp(0.9rem, 1.6vw, 1.25rem);
 
     // @include mobile {
-      margin-left:20px;
+    margin-left: 20px;
     // }
 
     svg {
@@ -350,68 +451,69 @@
   }
 
   &__brand {
+
     // Hide brand text on very small screens
     @include xs {
       display: none;
     }
-    
+
     @include sm {
       display: none;
     }
-    
+
     // Show on tablets and up
     @include md-up {
       display: block;
     }
-    
+
     // Legacy mobile support
     @include mobile {
       display: none;
     }
   }
-  
+
   &__nav {
     display: flex;
     align-items: center;
     gap: clamp($spacing-sm, 3vw, $spacing-lg);
-    
+
     // Extra small phones - hide completely, use mobile menu
     @include xs {
       display: none;
     }
-    
+
     // Small phones - hide completely, use mobile menu
     @include sm {
       display: none;
     }
-    
+
     // Medium tablets - hide, use compact toggles
     @include md {
       display: none;
     }
-    
-    // Large laptops - normal gap
+
+    // Large laptops (768px - 1023px) - hide, use compact toggles
     @include lg {
-      display: flex;
-      gap: $spacing-md;
+      display: none;
     }
-    
-    // Extra large desktop - larger gap
+
+    // Extra large desktop (1024px+) - show full nav
     @include xl {
+      display: flex;
       gap: $spacing-lg;
     }
-    
+
     // Extra extra large - extra large gap
     @include xxl {
       gap: $spacing-xl;
     }
-    
+
     // Legacy mobile support
     @include mobile {
       display: none;
     }
   }
-  
+
   &__link {
     color: var(--text-secondary);
     text-decoration: none;
@@ -422,40 +524,40 @@
     position: relative;
     font-size: 0.875rem;
     text-align: center;
-    
+
     // Medium tablets - smaller padding and font
     @include md {
       padding: $spacing-xs $spacing-sm;
       font-size: 0.8rem;
     }
-    
+
     // Large laptops - normal size
     @include lg {
       padding: $spacing-sm $spacing-md;
       font-size: 0.875rem;
     }
-    
+
     // Extra large desktop - larger size
     @include xl {
       padding: $spacing-sm $spacing-lg;
       font-size: 0.9rem;
     }
-    
+
     // Extra extra large - extra large size
     @include xxl {
       padding: $spacing-md $spacing-xl;
       font-size: 1rem;
     }
-    
+
     &:hover {
       color: var(--primary-blue);
       background-color: var(--bg-secondary);
     }
-    
+
     &--active {
       color: var(--primary-blue);
       background-color: var(--bg-secondary);
-      
+
       &::after {
         content: '';
         position: absolute;
@@ -468,32 +570,32 @@
         border-radius: 1px;
       }
     }
-    
+
     &--admin {
       color: var(--primary-orange);
       font-weight: 600;
-      
+
       &:hover {
         color: var(--error);
         background-color: rgba(239, 68, 68, 0.1);
       }
-      
+
       &.navbar__link--active {
         color: var(--error);
         background-color: rgba(239, 68, 68, 0.1);
-        
+
         &::after {
           background-color: var(--error);
         }
       }
     }
-    
+
     &--external {
       display: flex;
       align-items: center;
       gap: 10px;
       color: var(--text-secondary);
-      
+
       .external-icon {
         width: 17px;
         height: 17px;
@@ -501,17 +603,17 @@
         opacity: 0.7;
         transition: all $transition-fast;
       }
-      
+
       &:hover {
         color: var(--primary-orange-light);
-        
+
         .external-icon {
           opacity: 1;
           transform: translateY(-1px);
         }
       }
     }
-    
+
     &--dropdown {
       display: flex;
       align-items: center;
@@ -520,10 +622,10 @@
       border: none;
       cursor: pointer;
       position: relative;
-      
+
       &:hover {
         color: var(--primary-blue);
-        
+
         .dropdown-icon {
           transform: translateY(-1px);
           color: var(--primary-blue);
@@ -532,11 +634,11 @@
       }
     }
   }
-  
+
   // Dropdown styles
   &__dropdown {
     position: relative;
-    
+
     &-menu {
       position: absolute;
       top: calc(100% + 8px);
@@ -550,7 +652,7 @@
       min-width: 240px;
       padding: 8px 0;
       backdrop-filter: blur(10px);
-      
+
       // Arrow pointing up
       &::before {
         content: '';
@@ -566,28 +668,28 @@
         border-right: none;
         transform: translateX(-50%) rotate(45deg);
       }
-      
+
       // Responsive adjustments
       @include xs {
         min-width: 200px;
         left: 0;
         transform: none;
-        
+
         &::before {
           left: 24px;
           transform: rotate(45deg);
         }
       }
-      
+
       @include sm {
         min-width: 220px;
       }
-      
+
       @include md-up {
         min-width: 260px;
       }
     }
-    
+
     &-item {
       width: 100%;
       padding: 12px 16px;
@@ -603,54 +705,54 @@
       color: var(--text-primary);
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       position: relative;
-      
+
       // Responsive adjustments
       @include xs {
         padding: 10px 12px;
         font-size: 0.8rem;
         gap: 8px;
       }
-      
+
       @include sm {
         padding: 11px 14px;
         font-size: 0.825rem;
         gap: 10px;
       }
-      
+
       .download-icon {
         width: 18px;
         height: 18px;
         opacity: 0.6;
         color: var(--primary-blue);
         transition: all 0.2s ease;
-        
+
         @include xs {
           width: 16px;
           height: 16px;
         }
-        
+
         @include sm {
           width: 17px;
           height: 17px;
         }
       }
-      
+
       &:hover {
         background: linear-gradient(135deg, var(--primary-blue-light), var(--primary-blue));
         color: white;
         transform: translateX(4px);
-        
+
         .download-icon {
           opacity: 1;
           color: white;
           transform: scale(1.1);
         }
       }
-      
+
       &:active {
         transform: translateX(2px);
       }
-      
+
       // Subtle border between items
       &:not(:last-child)::after {
         content: '';
@@ -662,21 +764,21 @@
         background: var(--border-color);
         opacity: 0.3;
       }
-      
+
       &:first-child {
         border-radius: 12px 12px 0 0;
       }
-      
+
       &:last-child {
         border-radius: 0 0 12px 12px;
       }
-      
+
       &:only-child {
         border-radius: 12px;
       }
     }
   }
-  
+
   // Mobile dropdown styles
   &__mobile-dropdown {
     &-menu {
@@ -691,7 +793,7 @@
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
     }
-    
+
     &-item {
       width: 100%;
       padding: 12px 16px;
@@ -707,54 +809,54 @@
       color: var(--text-primary);
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       position: relative;
-      
+
       // Responsive adjustments
       @include xs {
         padding: 10px 12px;
         font-size: 0.8rem;
         gap: 8px;
       }
-      
+
       @include sm {
         padding: 11px 14px;
         font-size: 0.825rem;
         gap: 10px;
       }
-      
+
       .download-icon {
         width: 18px;
         height: 18px;
         opacity: 0.6;
         color: var(--primary-blue);
         transition: all 0.2s ease;
-        
+
         @include xs {
           width: 16px;
           height: 16px;
         }
-        
+
         @include sm {
           width: 17px;
           height: 17px;
         }
       }
-      
+
       &:hover {
         background: linear-gradient(135deg, var(--primary-blue-light), var(--primary-blue));
         color: white;
         transform: translateX(4px);
-        
+
         .download-icon {
           opacity: 1;
           color: white;
           transform: scale(1.1);
         }
       }
-      
+
       &:active {
         transform: translateX(2px);
       }
-      
+
       // Subtle border between items
       &:not(:last-child)::after {
         content: '';
@@ -766,69 +868,69 @@
         background: var(--border-color);
         opacity: 0.3;
       }
-      
+
       &:first-child {
         border-radius: 12px 12px 0 0;
       }
-      
+
       &:last-child {
         border-radius: 0 0 12px 12px;
       }
-      
+
       &:only-child {
         border-radius: 12px;
       }
     }
   }
-  
+
   &__actions {
     display: flex;
     align-items: center;
     gap: $spacing-md;
 
-    
+
     // Extra small phones - smaller gap
     @include xs {
       gap: $spacing-xs;
     }
-    
+
     // Small phones - small gap
     @include sm {
       gap: $spacing-sm;
     }
-    
+
     // Medium tablets - medium gap
     @include md {
       gap: $spacing-md;
     }
-    
+
     // Large laptops and up - larger gaps
     @include lg-up {
       gap: $spacing-lg;
     }
   }
-  
+
   &__user {
     display: flex;
     align-items: center;
     gap: $spacing-sm;
-    
+
     // Extra small phones - hide username, show only avatar
     @include xs {
       gap: 0;
     }
-    
+
     // Small phones - very small gap
     @include sm {
       gap: $spacing-xs;
     }
-    
+
     // Medium tablets and up - normal gap
     @include md-up {
       gap: $spacing-sm;
     }
   }
-  
+
   &__avatar {
     width: clamp(24px, calc(var(--navbar-height) - 24px), 36px);
     height: clamp(24px, calc(var(--navbar-height) - 24px), 36px);
@@ -836,38 +938,38 @@
     border: 2px solid var(--border-color);
     object-fit: cover;
   }
-  
+
   &__username {
     color: var(--text-primary);
     font-weight: 500;
     font-size: 0.875rem;
-    
+
     // Extra small phones - hide completely
     @include xs {
       display: none;
     }
-    
+
     // Small phones - hide completely
     @include sm {
       display: none;
     }
-    
+
     // Medium tablets - show with smaller font
     @include md {
       display: block;
       font-size: 0.75rem;
     }
-    
+
     // Large laptops - normal font
     @include lg {
       font-size: 0.875rem;
     }
-    
+
     // Extra large desktop - larger font
     @include xl {
       font-size: 0.9rem;
     }
-    
+
     // Extra extra large - extra large font
     @include xxl {
       font-size: 1rem;
@@ -904,20 +1006,20 @@
       display: none;
     }
   }
-  
+
   &__status {
     font-size: 0.75rem;
     padding: 2px 6px;
     border-radius: $radius-sm;
     font-weight: 500;
-    
+
     &--pending {
       background-color: rgba(247, 143, 30, 0.1);
       color: var(--warning);
       border: 1px solid var(--warning);
     }
   }
-  
+
   &__mobile-toggle {
     background: none;
     border: none;
@@ -925,46 +1027,46 @@
     padding: $spacing-sm;
     border-radius: $radius-md;
     transition: background-color $transition-fast;
-    
+
     // Show only on small screens
     @include md-up {
       display: none;
     }
-    
+
     // Extra small phones - smaller padding
     @include xs {
       padding: $spacing-xs;
     }
-    
+
     // Small phones - small padding
     @include sm {
       padding: $spacing-sm;
     }
-    
+
     &:hover {
       background-color: var(--bg-secondary);
     }
   }
-  
+
   &__hamburger {
     display: flex;
     flex-direction: column;
     width: 24px;
     height: 18px;
     position: relative;
-    
+
     // Extra small phones - smaller hamburger
     @include xs {
       width: 20px;
       height: 15px;
     }
-    
+
     // Small phones - medium hamburger
     @include sm {
       width: 22px;
       height: 16px;
     }
-    
+
     span {
       display: block;
       height: 2px;
@@ -972,38 +1074,38 @@
       background-color: var(--text-primary);
       border-radius: 1px;
       transition: all $transition-normal;
-      
+
       &:nth-child(1) {
         transform-origin: top left;
       }
-      
+
       &:nth-child(2) {
         margin: 6px 0;
       }
-      
+
       &:nth-child(3) {
         transform-origin: bottom left;
       }
     }
-    
+
     &--open {
       span {
         &:nth-child(1) {
           transform: rotate(45deg) translate(0, -1px);
         }
-        
+
         &:nth-child(2) {
           opacity: 0;
           transform: translateX(-20px);
         }
-        
+
         &:nth-child(3) {
           transform: rotate(-45deg) translate(0, 1px);
         }
       }
     }
   }
-  
+
   &__mobile {
     position: fixed;
     top: var(--navbar-height);
@@ -1019,17 +1121,17 @@
     flex-direction: column;
     overflow-y: hidden;
     @include theme-transition;
-    
+
     &--open {
       transform: translateX(0);
     }
-    
+
     @include mobile {
       width: 100vw;
       border-left: none;
     }
   }
-  
+
   &__mobile-header {
     padding: $spacing-lg;
     border-bottom: 1px solid var(--border-color);
@@ -1037,7 +1139,7 @@
     align-items: center;
     gap: $spacing-md;
   }
-  
+
   &__user-info {
     display: flex;
     flex-direction: column;
@@ -1069,7 +1171,7 @@
       }
     }
   }
-  
+
   &__mobile-nav {
     flex: 1;
     padding: $spacing-lg;
@@ -1080,7 +1182,7 @@
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
   }
-  
+
   &__mobile-link {
     color: var(--text-secondary);
     text-decoration: none;
@@ -1088,57 +1190,57 @@
     padding: $spacing-md;
     border-radius: $radius-md;
     transition: all $transition-fast;
-    
+
     &:hover {
       color: var(--primary-blue);
       background-color: var(--bg-secondary);
     }
-    
+
     &--active {
       color: var(--primary-blue);
       background-color: var(--bg-secondary);
       border-left: 3px solid var(--primary-blue);
     }
-    
+
     &--admin {
       color: var(--primary-orange);
       font-weight: 600;
-      
+
       &:hover {
         color: var(--error);
         background-color: rgba(239, 68, 68, 0.1);
       }
-      
+
       &.navbar__mobile-link--active {
         color: var(--error);
         background-color: rgba(239, 68, 68, 0.1);
         border-left-color: var(--error);
       }
     }
-    
+
     &--dropdown {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      
+
       &:hover {
         .dropdown-icon {
           transform: translateY(-1px);
           color: var(--primary-blue);
         }
       }
-      
+
       .dropdown-icon {
         width: 16px;
         height: 16px;
         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         opacity: 0.7;
-        
+
         @include xs {
           width: 14px;
           height: 14px;
         }
-        
+
         &--open {
           transform: rotate(180deg);
           color: var(--primary-blue);
@@ -1147,11 +1249,11 @@
       }
     }
   }
-  
+
   &__mobile-logout {
     margin: $spacing-lg;
   }
-  
+
   &__overlay {
     position: fixed;
     top: var(--navbar-height);
@@ -1160,7 +1262,7 @@
     height: calc(100vh - var(--navbar-height));
     background-color: rgba(0, 0, 0, 0.5);
     z-index: $z-modal-backdrop;
-    
+
     @include mobile {
       display: none;
     }

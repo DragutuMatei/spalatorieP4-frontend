@@ -11,6 +11,7 @@ import { useAuth } from "../utils/AuthContext";
 import { toast_error, toast_success, toast_warn } from "../utils/Toasts";
 import AXIOS from "../utils/Axios_config";
 import { useSocket } from "../utils/SocketContext";
+import LoadingSpinner from "../components/LoadingSpinner";
 import "./Home.scss";
 
 dayjs.extend(utc);
@@ -63,6 +64,7 @@ const toBucharestDayjs = (value) => {
 
 function Home({ userApproved = false }) {
   const [value, setValue] = useState(dayjs().toDate());
+  const [loading, setLoading] = useState(false);
   const [hours, setHours] = useState([]);
   const { user } = useAuth();
   const [programari, setProgramari] = useState([]);
@@ -221,17 +223,17 @@ function Home({ userApproved = false }) {
         const startTimeFormatted =
           typeof startTime === "object" && startTime.seconds
             ? new Date(startTime.seconds * 1000).toLocaleTimeString("ro-RO", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })
+              hour: "2-digit",
+              minute: "2-digit",
+            })
             : startTime;
 
         const endTimeFormatted =
           typeof endTime === "object" && endTime.seconds
             ? new Date(endTime.seconds * 1000).toLocaleTimeString("ro-RO", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })
+              hour: "2-digit",
+              minute: "2-digit",
+            })
             : endTime;
 
         // Găsim indicii pentru start și end
@@ -313,9 +315,13 @@ function Home({ userApproved = false }) {
 
   const closeBookingModal = () => setSelectedBookingDetails(null);
 
-  const getProgramari = async () => {
+  const getProgramari = useCallback(async (dateStr) => {
+    if (!dateStr) return;
+
+    setLoading(true);
     try {
-      const rasp = await AXIOS.get(`/api/programare`);
+      // Fetch only for selected date
+      const rasp = await AXIOS.get(`/api/programare?date=${dateStr}`);
       if (rasp.data.success) {
         const validProgramari = (rasp.data.programari || []).filter(
           (pr) =>
@@ -330,7 +336,7 @@ function Home({ userApproved = false }) {
         setUsersProgramari(validProgramari);
       } else if (rasp.data.status === 404) {
         setUsersProgramari([]);
-        return;
+        // Don't error on 404, just empty list
       } else {
         setUsersProgramari([]);
         toast_error(rasp.data.message || "Eroare la incarcarea programarilor.");
@@ -342,8 +348,10 @@ function Home({ userApproved = false }) {
       }
       console.error("Eroare la incarcarea programarilor:", error);
       toast_error(error.message || "Eroare la incarcarea programarilor.");
+    } finally {
+      setLoading(false);
     }
-  };
+  }, []);
 
   const getTempReservations = async () => {
     try {
@@ -354,7 +362,7 @@ function Home({ userApproved = false }) {
         setTempReservations({});
         toast_error(
           response.data.message ||
-            "Eroare la incarcarea rezervarilor temporare."
+          "Eroare la incarcarea rezervarilor temporare."
         );
       }
     } catch (error) {
@@ -416,7 +424,7 @@ function Home({ userApproved = false }) {
         setMaintenanceIntervals([]);
         toast_error(
           rasp.data.message ||
-            "Eroare la incarcarea intervalilor de mentenanță."
+          "Eroare la incarcarea intervalilor de mentenanță."
         );
       }
     } catch (error) {
@@ -429,7 +437,10 @@ function Home({ userApproved = false }) {
   };
   useEffect(() => {
     getSettings();
-    getProgramari();
+    // Use the selected date (value) for fetching
+    const currentDateFormatted = dayjs(value).format("DD/MM/YYYY");
+    getProgramari(currentDateFormatted);
+
     getMaintenanceIntervals();
     // Obține rezervările temporare existente când se încarcă componenta
     getTempReservations();
@@ -625,6 +636,12 @@ function Home({ userApproved = false }) {
       socket.off("userUpdate");
     };
   }, [socket, user]);
+  useEffect(() => {
+    // Re-fetch when date changes
+    const currentDateFormatted = dayjs(value).format("DD/MM/YYYY");
+    getProgramari(currentDateFormatted);
+  }, [value, getProgramari]);
+
   useEffect(() => {
     return () => {
       socket.off("settings");
@@ -883,7 +900,7 @@ function Home({ userApproved = false }) {
               : infos.start_interval_time;
           const newEndTime =
             programari[programari.length - 1].final_interval_time >
-            infos.final_interval_time
+              infos.final_interval_time
               ? programari[programari.length - 1].final_interval_time
               : infos.final_interval_time;
 
@@ -1084,7 +1101,7 @@ function Home({ userApproved = false }) {
     [validateDryerDuration]
   );
 
- 
+
   const handleDryerHoursChange = useCallback(
     (event) => {
       const rawValue = event.target.value;
@@ -1111,8 +1128,8 @@ function Home({ userApproved = false }) {
         dryerDurationMinutes === ""
           ? 0
           : Number.isNaN(Number(dryerDurationMinutes))
-          ? 0
-          : Number(dryerDurationMinutes);
+            ? 0
+            : Number(dryerDurationMinutes);
       debounceDryerValidation(clampedValue, currentMinutes);
       setDryerStatusTick(Date.now());
     },
@@ -1423,14 +1440,14 @@ function Home({ userApproved = false }) {
     isAnotherUserEditingDryer,
   ]);
 
-  const dryerTileStatus = useMemo(() => {if (dryerActiveBooking) {
+  const dryerTileStatus = useMemo(() => {
+    if (dryerActiveBooking) {
       const until = dryerEndsAtLabel ? ` până la ${dryerEndsAtLabel}` : "";
       return `Ocupat de ${dryerOccupantName}${dryerOccupantRoom}${until}`;
     }
     if (isAnotherUserEditingDryer && liveDryerSelection) {
-      return `Selectat de ${liveDryerSelection.userName || "Utilizator"} (cam. ${
-        liveDryerSelection.camera || "?"
-      })`;
+      return `Selectat de ${liveDryerSelection.userName || "Utilizator"} (cam. ${liveDryerSelection.camera || "?"
+        })`;
     }
     if (!dryerEnabled) {
       return "Uscător indisponibil";
@@ -1451,7 +1468,7 @@ function Home({ userApproved = false }) {
       return `Mentenanță programată ${startLabel}-${endLabel}`;
     }
 
-    
+
     return "Disponibil";
   }, [
     dryerEnabled,
@@ -1477,10 +1494,10 @@ function Home({ userApproved = false }) {
   const dryerActionLabel = dryerMaintenanceActive
     ? "Uscător indisponibil"
     : dryerActiveBooking
-    ? "Uscător ocupat"
-    : dryerDurationTotalMinutes <= 0
-    ? "Alege durata"
-    : "Rezervă uscătorul";
+      ? "Uscător ocupat"
+      : dryerDurationTotalMinutes <= 0
+        ? "Alege durata"
+        : "Rezervă uscătorul";
 
   useEffect(() => {
     const shouldTick =
@@ -1740,7 +1757,7 @@ function Home({ userApproved = false }) {
         if (
           selectedMachine &&
           newHours[i]?.status[selectedMachine]?.status ===
-            STATUS[selectedMachine].REZERVAT.status
+          STATUS[selectedMachine].REZERVAT.status
         ) {
           newHours[i].status[selectedMachine].status =
             STATUS[selectedMachine].DISPONIBIL.status;
@@ -1786,254 +1803,259 @@ function Home({ userApproved = false }) {
   };
 
   return (
-    <div className="home">
-      {/* Banner pentru utilizatori neaprobați */}
-      {!isUserApproved && (
-        <div className="container">
-          <div className="alert alert--warning">
-            <div className="alert__icon">
+    <div className="home-container">
+      {loading && (
+        <div className="loading-overlay">
+          <LoadingSpinner size="lg" />
+        </div>
+      )}
+      <div className="home">
+        {/* Banner pentru utilizatori neaprobați */}
+        {!isUserApproved && (
+          <div className="container">
+            <div className="alert alert--warning">
+              <div className="alert__icon">
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+              </div>
+              <div className="alert__content">
+                <h3>Cont neaprobat</h3>
+                <p>
+                  Contul tău nu este încă aprobat. Poți vizualiza programările, dar
+                  nu poți face rezervări până la aprobare.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isWashingMachineSelected &&
+          programari &&
+          programari.length > 0 &&
+          createProgramare() != null && (
+            <div className="home__floating-actions">
+              <button className="btn btn-secondary" onClick={renunta}>
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+                Renunță
+              </button>
+              <button
+                className="btn btn-success"
+                onClick={submitWashingMachineBooking}
+              >
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <polyline points="20,6 9,17 4,12" />
+                </svg>
+                Finalizează programarea
+              </button>
+            </div>
+          )}
+
+        {isDryerSelected && (
+          <div className="home__floating-actions home__floating-actions--dryer">
+            <button
+              className="btn btn-secondary"
+              onClick={handleCancelDryerSelection}
+            >
               <svg
-                width="24"
-                height="24"
+                width="20"
+                height="20"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="2"
               >
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                <line x1="12" y1="9" x2="12" y2="13" />
-                <line x1="12" y1="17" x2="12.01" y2="17" />
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
-            </div>
-            <div className="alert__content">
-              <h3>Cont neaprobat</h3>
-              <p>
-                Contul tău nu este încă aprobat. Poți vizualiza programările, dar
-                nu poți face rezervări până la aprobare.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isWashingMachineSelected &&
-        programari &&
-        programari.length > 0 &&
-        createProgramare() != null && (
-        <div className="home__floating-actions">
-          <button className="btn btn-secondary" onClick={renunta}>
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
+              Renunță
+            </button>
+            <button
+              className="btn btn-success"
+              onClick={submitDryerBooking}
+              disabled={!canSubmitDryer}
             >
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-            Renunță
-          </button>
-          <button
-            className="btn btn-success"
-            onClick={submitWashingMachineBooking}
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <polyline points="20,6 9,17 4,12" />
-            </svg>
-            Finalizează programarea
-          </button>
-        </div>
-      )}
-
-      {isDryerSelected && (
-        <div className="home__floating-actions home__floating-actions--dryer">
-          <button
-            className="btn btn-secondary"
-            onClick={handleCancelDryerSelection}
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-            Renunță
-          </button>
-          <button
-            className="btn btn-success"
-            onClick={submitDryerBooking}
-            disabled={!canSubmitDryer}
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <polyline points="20,6 9,17 4,12" />
-            </svg>
-            {dryerActionLabel}
-          </button>
-        </div>
-      )}
-
-      <div className="container">
-        {/* Header */}
-        <div className="home__header">
-          <h1>Programează-ți spălarea</h1>
-          <p>Selectează data, mașina și intervalul orar dorit</p>
-        </div>
-
-        {/* Booking Summary */}
-        {isWashingMachineSelected &&
-          programari &&
-          programari.length > 0 &&
-          createProgramare() != null && (
-          <div className="home__booking-summary">
-            <h2>Programarea ta</h2>
-            <div className="home__booking-summary__details">
-              <div className="home__booking-summary__detail">
-                <strong>{selectedMachine}</strong>
-                <span>Mașina selectată</span>
-              </div>
-              <div className="home__booking-summary__detail">
-                <strong>{date}</strong>
-                <span>Data programării</span>
-              </div>
-              <div className="home__booking-summary__detail">
-                <strong>
-                  {start_h} - {final_h}
-                </strong>
-                <span>Intervalul orar</span>
-              </div>
-            </div>
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <polyline points="20,6 9,17 4,12" />
+              </svg>
+              {dryerActionLabel}
+            </button>
           </div>
         )}
 
-        {isDryerSelected && (
-          <div className="home__booking-summary">
-            <h2>Rezervarea uscătorului</h2>
-            <div className="home__booking-summary__details">
-              <div className="home__booking-summary__detail">
-                <strong>Uscător</strong>
-                <span>Echipament selectat</span>
-              </div>
-              <div className="home__booking-summary__detail home__booking-summary__detail--inputs">
-                <label
-                  htmlFor="dryer-duration-hours"
-                  className="home__booking-summary__label"
-                >
-                  Durata
-                </label>
-                <div className="home__booking-summary__control">
-                  <input
-                    id="dryer-duration-hours"
-                    type="number"
-                    min="0"
-                    max={DRYER_MAX_HOURS}
-                    value={dryerDurationHours}
-                    onChange={handleDryerHoursChange}
-                  />
-                  <span>h</span>
-                  <input
-                    id="dryer-duration-minutes"
-                    type="number"
-                    min="0"
-                    max="59"
-                    placeholder="--"
-                    value={dryerDurationMinutes}
-                    onChange={handleDryerMinutesChange}
-                  />
-                  <span>m</span>
+        <div className="container">
+          {/* Header */}
+          <div className="home__header">
+            <h1>Programează-ți spălarea</h1>
+            <p>Selectează data, mașina și intervalul orar dorit</p>
+          </div>
+
+          {/* Booking Summary */}
+          {isWashingMachineSelected &&
+            programari &&
+            programari.length > 0 &&
+            createProgramare() != null && (
+              <div className="home__booking-summary">
+                <h2>Programarea ta</h2>
+                <div className="home__booking-summary__details">
+                  <div className="home__booking-summary__detail">
+                    <strong>{selectedMachine}</strong>
+                    <span>Mașina selectată</span>
+                  </div>
+                  <div className="home__booking-summary__detail">
+                    <strong>{date}</strong>
+                    <span>Data programării</span>
+                  </div>
+                  <div className="home__booking-summary__detail">
+                    <strong>
+                      {start_h} - {final_h}
+                    </strong>
+                    <span>Intervalul orar</span>
+                  </div>
                 </div>
               </div>
-              <div className="home__booking-summary__detail">
-                <strong>
-                  {dryerDraftTiming.start
-                    ? dryerDraftTiming.start.format("DD/MM/YYYY HH:mm")
-                    : "--"}
-                </strong>
-                <span>Start automat</span>
-              </div>
-              <div className="home__booking-summary__detail">
-                <strong>
-                  {dryerDraftTiming.end
-                    ? dryerDraftTiming.end.format("DD/MM/YYYY HH:mm")
-                    : "--"}
-                </strong>
-                <span>Final estimat</span>
-              </div>
-              <div className="home__booking-summary__detail">
-                <strong>
-                  {dryerActiveBooking
-                    ? dryerEndsAtLabel
-                    : dryerMaintenanceActive
-                    ? "Mentenanță"
-                    : isAnotherUserEditingDryer
-                    ? `${liveDryerSelection?.userName || "Utilizator"} (cam. ${
-                        liveDryerSelection?.camera || "?"
-                      })`
-                    : "Disponibil"}
-                </strong>
-                <span>
-                  {dryerActiveBooking
-                    ? `Ocupat până la ${dryerEndsAtLabel}`
-                    : dryerMaintenanceActive
-                    ? "Uscător în mentenanță"
-                    : isAnotherUserEditingDryer
-                    ? "Alt utilizator selectează"
-                    : "Stare actuală"}
-                </span>
-              </div>
-              {dryerActiveBooking && (
+            )}
+
+          {isDryerSelected && (
+            <div className="home__booking-summary">
+              <h2>Rezervarea uscătorului</h2>
+              <div className="home__booking-summary__details">
+                <div className="home__booking-summary__detail">
+                  <strong>Uscător</strong>
+                  <span>Echipament selectat</span>
+                </div>
+                <div className="home__booking-summary__detail home__booking-summary__detail--inputs">
+                  <label
+                    htmlFor="dryer-duration-hours"
+                    className="home__booking-summary__label"
+                  >
+                    Durata
+                  </label>
+                  <div className="home__booking-summary__control">
+                    <input
+                      id="dryer-duration-hours"
+                      type="number"
+                      min="0"
+                      max={DRYER_MAX_HOURS}
+                      value={dryerDurationHours}
+                      onChange={handleDryerHoursChange}
+                    />
+                    <span>h</span>
+                    <input
+                      id="dryer-duration-minutes"
+                      type="number"
+                      min="0"
+                      max="59"
+                      placeholder="--"
+                      value={dryerDurationMinutes}
+                      onChange={handleDryerMinutesChange}
+                    />
+                    <span>m</span>
+                  </div>
+                </div>
                 <div className="home__booking-summary__detail">
                   <strong>
-                    {dryerOccupantName}
-                    {dryerOccupantRoom}
+                    {dryerDraftTiming.start
+                      ? dryerDraftTiming.start.format("DD/MM/YYYY HH:mm")
+                      : "--"}
                   </strong>
-                  <span>Utilizator curent</span>
+                  <span>Start automat</span>
                 </div>
+                <div className="home__booking-summary__detail">
+                  <strong>
+                    {dryerDraftTiming.end
+                      ? dryerDraftTiming.end.format("DD/MM/YYYY HH:mm")
+                      : "--"}
+                  </strong>
+                  <span>Final estimat</span>
+                </div>
+                <div className="home__booking-summary__detail">
+                  <strong>
+                    {dryerActiveBooking
+                      ? dryerEndsAtLabel
+                      : dryerMaintenanceActive
+                        ? "Mentenanță"
+                        : isAnotherUserEditingDryer
+                          ? `${liveDryerSelection?.userName || "Utilizator"} (cam. ${liveDryerSelection?.camera || "?"
+                          })`
+                          : "Disponibil"}
+                  </strong>
+                  <span>
+                    {dryerActiveBooking
+                      ? `Ocupat până la ${dryerEndsAtLabel}`
+                      : dryerMaintenanceActive
+                        ? "Uscător în mentenanță"
+                        : isAnotherUserEditingDryer
+                          ? "Alt utilizator selectează"
+                          : "Stare actuală"}
+                  </span>
+                </div>
+                {dryerActiveBooking && (
+                  <div className="home__booking-summary__detail">
+                    <strong>
+                      {dryerOccupantName}
+                      {dryerOccupantRoom}
+                    </strong>
+                    <span>Utilizator curent</span>
+                  </div>
+                )}
+              </div>
+              {dryerDurationError && (
+                <p className="home__booking-summary__error">{dryerDurationError}</p>
               )}
+              {isAnotherUserEditingDryer &&
+                !dryerActiveBooking &&
+                !dryerMaintenanceActive && (
+                  <p className="home__booking-summary__warning">
+                    Alt utilizator selectează în acest moment. Așteaptă să finalizeze.
+                  </p>
+                )}
+              <p className="mt-2" style={{ fontSize: "0.875rem" }}>
+                Uscătorul se eliberează automat după trecerea duratei selectate.
+              </p>
             </div>
-            {dryerDurationError && (
-              <p className="home__booking-summary__error">{dryerDurationError}</p>
-            )}
-            {isAnotherUserEditingDryer &&
-              !dryerActiveBooking &&
-              !dryerMaintenanceActive && (
-                <p className="home__booking-summary__warning">
-                  Alt utilizator selectează în acest moment. Așteaptă să finalizeze.
-                </p>
-              )}
-            <p className="mt-2" style={{ fontSize: "0.875rem" }}>
-              Uscătorul se eliberează automat după trecerea duratei selectate.
-            </p>
-          </div>
-        )}
+          )}
 
-        {/* Controls */}
-        <div className="home__controls">
-          {/* Date Picker */}
-          <div className="home__date-picker">
-            <div className="card">
-              <h3>Selectează data</h3>
-              <DatePicker
+          {/* Controls */}
+          <div className="home__controls">
+            {/* Date Picker */}
+            <div className="home__date-picker">
+              <div className="card">
+                <h3>Selectează data</h3>
+                <DatePicker
                   value={value}
                   onChange={selectDate}
                   format="DD/MM/YYYY"
@@ -2050,266 +2072,263 @@ function Home({ userApproved = false }) {
                       : dayjs().add(3, "weeks").toDate()
                   }
                 />
-              
-              <p
-                className="mt-3 text-center"
-                style={{ color: "var(--text-secondary)", fontSize: "0.875rem" }}
-              >
-                {dayjs(value)
-                  .tz("Europe/Bucharest")
-                  .format("dddd, D MMMM YYYY")}
-              </p>
+
+                <p
+                  className="mt-3 text-center"
+                  style={{ color: "var(--text-secondary)", fontSize: "0.875rem" }}
+                >
+                  {dayjs(value)
+                    .tz("Europe/Bucharest")
+                    .format("dddd, D MMMM YYYY")}
+                </p>
+              </div>
             </div>
-          </div>
 
-          {/* Machine Selector */}
-          <div className="home__machine-selector">
-            <div className="card">
-              <h3>Selectează mașina</h3>
-              <div className="home__machine-selector__grid">
-                {[...washingMachines, { id: "uscator", name: DRYER_MACHINE }].map(
-                  (m) => {
-                    const isDryer = m.name === DRYER_MACHINE;
-                    const machineEnabled = isDryer
-                      ? dryerSelectable
-                      : Boolean(realStates[m.name]);
-                    const machineStatus = isDryer
-                      ? dryerTileStatus
-                      : machineEnabled
-                      ? "Disponibil"
-                      : "Indisponibil";
-                    const isDisabled = !machineEnabled;
+            {/* Machine Selector */}
+            <div className="home__machine-selector">
+              <div className="card">
+                <h3>Selectează mașina</h3>
+                <div className="home__machine-selector__grid">
+                  {[...washingMachines, { id: "uscator", name: DRYER_MACHINE }].map(
+                    (m) => {
+                      const isDryer = m.name === DRYER_MACHINE;
+                      const machineEnabled = isDryer
+                        ? dryerSelectable
+                        : Boolean(realStates[m.name]);
+                      const machineStatus = isDryer
+                        ? dryerTileStatus
+                        : machineEnabled
+                          ? "Disponibil"
+                          : "Indisponibil";
+                      const isDisabled = !machineEnabled;
 
-                    return (
-                      <div
-                        key={m.id}
-                        className={`home__machine-selector__option ${
-                          selectedMachine === m.name
+                      return (
+                        <div
+                          key={m.id}
+                          className={`home__machine-selector__option ${selectedMachine === m.name
                             ? "home__machine-selector__option--selected"
                             : ""
-                        } ${
-                          isDisabled
-                            ? "home__machine-selector__option--disabled"
-                            : ""
-                        }`}
-                        onClick={() => {
-                          if (!isDisabled) {
-                            handleMachineSelect(m.name);
-                          }
-                        }}
-                      >
-                        <div className="home__machine-selector__title">
-                          <span>{m.name}</span>
-                        </div>
-                        <div className="home__machine-selector__status">
-                          {machineStatus}
-                        </div>
-                      </div>
-                    );
-                  }
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Schedule */}
-        <div className="home__schedule">
-          <div className="card">
-            <div className="card__header">
-              <h3>
-                Program pentru {dayjs(value).format("DD/MM/YYYY")}
-                <span
-                  className={`badge ${
-                    selectedMachine ? "badge--info" : "badge--warning"
-                  }`}
-                >
-                  {selectedMachine || "Toate maşinile"}
-                </span>
-              </h3>
-            </div>
-
-            <div className="table__scroll">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Interval orar</th>
-                    {washingMachines.map((m) => (
-                      <th key={`header-${m.id}`}>{m.name}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {hours.map((hour, index) => (
-                    <tr key={hour.start_interval_time}>
-                      <td
-                        style={{
-                          fontWeight: 600,
-                          color: "var(--text-primary)",
-                        }}
-                      >
-                        {hour.time}
-                      </td>
-                      {washingMachines.map((m) => {
-                        const isTempReserved = isSlotTempReservedByOthers(
-                          index,
-                          m.name
-                        );
-                        const tempReserverName = isTempReserved
-                          ? getTempReservationUserName(index, m.name)
-                          : null;
-                        const status = hour.status[m.name].status;
-
-                        let rowClass = "";
-                        let cellContent = status;
-
-                        // Dacă o mașină este selectată și aceasta nu este mașina curentă
-                        const isOtherMachineSelected =
-                          selectedMachine !== "" && selectedMachine !== m.name;
-
-                        const slotEndDateTime = dayjs
-                          .tz(
-                            `${selectedDate.format("YYYY-MM-DD")} ${
-                              hour.final_interval_time
-                            }`,
-                            "YYYY-MM-DD HH:mm",
-                            timeZone
-                          )
-                          .subtract(1, "minute");
-                        const isPastSlot =
-                          blockPastSlotsEnabled &&
-                          isSelectedDateToday &&
-                          slotEndDateTime.isBefore(now);
-
-                        if (isTempReserved) {
-                          rowClass = "table__row--warning";
-                          cellContent = (
-                            <div style={{ fontSize: "0.75rem" }}>
-                              <div style={{ fontWeight: "600" }}>
-                                ÎN CURS DE REZERVARE
-                              </div>
-                              <div style={{ opacity: 0.8 }}>
-                                {tempReserverName}
-                              </div>
-                            </div>
-                          );
-                        } else if (isPastSlot) {
-                          rowClass = "table__row--cancelled";
-                          cellContent = blockPastSlotsEnabled
-                            ? "Trecut"
-                            : cellContent;
-                        } else if (isOtherMachineSelected) {
-                          rowClass = "table__row--cancelled";
-                          cellContent = "Indisponibil";
-                        } else if (status === "DISPONIBIL") {
-                          rowClass = "table__row--success";
-                          cellContent = "Disponibil";
-                        } else if (status === "OCUPAT") {
-                          rowClass = "table__row--error";
-                          cellContent = hour.status[m.name].by
-                            ? `Ocupat (${hour.status[m.name].by})`
-                            : "Ocupat";
-                        } else if (status === "MENTENANTA") {
-                          rowClass = "table__row--warning";
-                          cellContent = "Mentenanță";
-                        } else if (status === "REZERVAT") {
-                          rowClass = "table__row--info";
-                          cellContent = "Rezervat";
-                        } else if (!realStates[m.name]) {
-                          rowClass = "table__row--cancelled";
-                          cellContent = "Indisponibil";
-                        }
-
-                        const canClick =
-                          (selectedMachine === "" ||
-                            selectedMachine === m.name) &&
-                          status !== "OCUPAT" &&
-                          status !== "MENTENANTA" &&
-                          realStates[m.name] === true &&
-                          !isTempReserved &&
-                          !isPastSlot;
-
-                        return (
-                          <td
-                            key={m.id}
-                            className={rowClass}
-                            onClick={() => {
-                              if (status === "OCUPAT") {
-                                handleOccupiedSlotClick(hour, m.name);
-                                return;
-                              }
-                              if (
-                                dayjs(value).isBefore(dayjs().startOf("day"))
-                              ) {
-                                toast_error(
-                                  "Nu poți face o programare în trecut!"
-                                );
-                                return;
-                              } else if (canClick) {
-                                updateProgramare(hour, m.name, index);
-                              }
-                            }}
-                            style={{
-                              cursor: canClick ? "pointer" : "not-allowed",
-                              textAlign: "center",
-                              fontSize: "0.875rem",
-                              fontWeight: "600",
-                            }}
-                            title={
-                              isTempReserved
-                                ? `ÎN CURS DE REZERVARE de: ${tempReserverName}`
-                                : hour.status[m.name].by || status
+                            } ${isDisabled
+                              ? "home__machine-selector__option--disabled"
+                              : ""
+                            }`}
+                          onClick={() => {
+                            if (!isDisabled) {
+                              handleMachineSelect(m.name);
                             }
-                          >
-                            {cellContent}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        {selectedBookingDetails && (
-          <div className="home__booking-modal" role="dialog" aria-modal="true">
-            <div
-              className="home__booking-modal__backdrop"
-              onClick={closeBookingModal}
-            ></div>
-            <div className="home__booking-modal__content">
-              <button
-                type="button"
-                className="home__booking-modal__close"
-                onClick={closeBookingModal}
-                aria-label="Închide"
-              >
-                ×
-              </button>
-              <h3>Detalii rezervare</h3>
-              <div className="home__booking-modal__details">
-                <p>
-                  <span>Mașină:</span> {selectedBookingDetails.machine}
-                </p>
-                <p>
-                  <span>Interval:</span> {selectedBookingDetails.interval}
-                </p>
-                <p>
-                  <span>Nume:</span> {selectedBookingDetails.nume}
-                </p>
-                <p>
-                  <span>Cameră:</span> {selectedBookingDetails.camera}
-                </p>
-                <p>
-                  <span>Telefon:</span>{" "}
-                  {selectedBookingDetails.telefon || "N/A"}
-                </p>
+                          }}
+                        >
+                          <div className="home__machine-selector__title">
+                            <span>{m.name}</span>
+                          </div>
+                          <div className="home__machine-selector__status">
+                            {machineStatus}
+                          </div>
+                        </div>
+                      );
+                    }
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        )}
+
+          {/* Schedule */}
+          <div className="home__schedule">
+            <div className="card">
+              <div className="card__header">
+                <h3>
+                  Program pentru {dayjs(value).format("DD/MM/YYYY")}
+                  <span
+                    className={`badge ${selectedMachine ? "badge--info" : "badge--warning"
+                      }`}
+                  >
+                    {selectedMachine || "Toate maşinile"}
+                  </span>
+                </h3>
+              </div>
+
+              <div className="table__scroll">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Interval orar</th>
+                      {washingMachines.map((m) => (
+                        <th key={`header-${m.id}`}>{m.name}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {hours.map((hour, index) => (
+                      <tr key={hour.start_interval_time}>
+                        <td
+                          style={{
+                            fontWeight: 600,
+                            color: "var(--text-primary)",
+                          }}
+                        >
+                          {hour.time}
+                        </td>
+                        {washingMachines.map((m) => {
+                          const isTempReserved = isSlotTempReservedByOthers(
+                            index,
+                            m.name
+                          );
+                          const tempReserverName = isTempReserved
+                            ? getTempReservationUserName(index, m.name)
+                            : null;
+                          const status = hour.status[m.name].status;
+
+                          let rowClass = "";
+                          let cellContent = status;
+
+                          // Dacă o mașină este selectată și aceasta nu este mașina curentă
+                          const isOtherMachineSelected =
+                            selectedMachine !== "" && selectedMachine !== m.name;
+
+                          const slotEndDateTime = dayjs
+                            .tz(
+                              `${selectedDate.format("YYYY-MM-DD")} ${hour.final_interval_time
+                              }`,
+                              "YYYY-MM-DD HH:mm",
+                              timeZone
+                            )
+                            .subtract(1, "minute");
+                          const isPastSlot =
+                            blockPastSlotsEnabled &&
+                            isSelectedDateToday &&
+                            slotEndDateTime.isBefore(now);
+
+                          if (isTempReserved) {
+                            rowClass = "table__row--warning";
+                            cellContent = (
+                              <div style={{ fontSize: "0.75rem" }}>
+                                <div style={{ fontWeight: "600" }}>
+                                  ÎN CURS DE REZERVARE
+                                </div>
+                                <div style={{ opacity: 0.8 }}>
+                                  {tempReserverName}
+                                </div>
+                              </div>
+                            );
+                          } else if (isPastSlot) {
+                            rowClass = "table__row--cancelled";
+                            cellContent = blockPastSlotsEnabled
+                              ? "Trecut"
+                              : cellContent;
+                          } else if (isOtherMachineSelected) {
+                            rowClass = "table__row--cancelled";
+                            cellContent = "Indisponibil";
+                          } else if (status === "DISPONIBIL") {
+                            rowClass = "table__row--success";
+                            cellContent = "Disponibil";
+                          } else if (status === "OCUPAT") {
+                            rowClass = "table__row--error";
+                            cellContent = hour.status[m.name].by
+                              ? `Ocupat (${hour.status[m.name].by})`
+                              : "Ocupat";
+                          } else if (status === "MENTENANTA") {
+                            rowClass = "table__row--warning";
+                            cellContent = "Mentenanță";
+                          } else if (status === "REZERVAT") {
+                            rowClass = "table__row--info";
+                            cellContent = "Rezervat";
+                          } else if (!realStates[m.name]) {
+                            rowClass = "table__row--cancelled";
+                            cellContent = "Indisponibil";
+                          }
+
+                          const canClick =
+                            (selectedMachine === "" ||
+                              selectedMachine === m.name) &&
+                            status !== "OCUPAT" &&
+                            status !== "MENTENANTA" &&
+                            realStates[m.name] === true &&
+                            !isTempReserved &&
+                            !isPastSlot;
+
+                          return (
+                            <td
+                              key={m.id}
+                              className={rowClass}
+                              onClick={() => {
+                                if (status === "OCUPAT") {
+                                  handleOccupiedSlotClick(hour, m.name);
+                                  return;
+                                }
+                                if (
+                                  dayjs(value).isBefore(dayjs().startOf("day"))
+                                ) {
+                                  toast_error(
+                                    "Nu poți face o programare în trecut!"
+                                  );
+                                  return;
+                                } else if (canClick) {
+                                  updateProgramare(hour, m.name, index);
+                                }
+                              }}
+                              style={{
+                                cursor: canClick ? "pointer" : "not-allowed",
+                                textAlign: "center",
+                                fontSize: "0.875rem",
+                                fontWeight: "600",
+                              }}
+                              title={
+                                isTempReserved
+                                  ? `ÎN CURS DE REZERVARE de: ${tempReserverName}`
+                                  : hour.status[m.name].by || status
+                              }
+                            >
+                              {cellContent}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          {selectedBookingDetails && (
+            <div className="home__booking-modal" role="dialog" aria-modal="true">
+              <div
+                className="home__booking-modal__backdrop"
+                onClick={closeBookingModal}
+              ></div>
+              <div className="home__booking-modal__content">
+                <button
+                  type="button"
+                  className="home__booking-modal__close"
+                  onClick={closeBookingModal}
+                  aria-label="Închide"
+                >
+                  ×
+                </button>
+                <h3>Detalii rezervare</h3>
+                <div className="home__booking-modal__details">
+                  <p>
+                    <span>Mașină:</span> {selectedBookingDetails.machine}
+                  </p>
+                  <p>
+                    <span>Interval:</span> {selectedBookingDetails.interval}
+                  </p>
+                  <p>
+                    <span>Nume:</span> {selectedBookingDetails.nume}
+                  </p>
+                  <p>
+                    <span>Cameră:</span> {selectedBookingDetails.camera}
+                  </p>
+                  <p>
+                    <span>Telefon:</span>{" "}
+                    {selectedBookingDetails.telefon || "N/A"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

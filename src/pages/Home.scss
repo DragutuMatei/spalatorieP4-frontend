@@ -1,5 +1,30 @@
 @import '../styles/variables.scss';
 
+.home-container {
+  position: relative;
+  min-height: 50vh;
+}
+
+.loading-overlay { 
+  inset: 0;
+  display: flex;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100lvw;
+  height: 100lvh;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(2px);
+  z-index: 50;
+  border-radius: $radius-xl;
+
+  [data-theme="dark"] & {
+    background-color: rgba(15, 23, 42, 0.5);
+  }
+}
+
 .home {
   padding: $spacing-lg 0;
 
@@ -108,6 +133,11 @@
     align-items: start;
 
     @include mobile {
+      grid-template-columns: 1fr;
+      gap: $spacing-lg;
+    }
+
+    @include tablet {
       grid-template-columns: 1fr;
       gap: $spacing-lg;
     }

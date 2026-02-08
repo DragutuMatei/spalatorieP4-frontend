@@ -87,19 +87,19 @@ $z-tooltip: 1070;
 }
 
 @mixin tablet {
-  @media (min-width: #{$mobile}) and (max-width: #{$tablet - 1px}) {
+  @media (min-width: #{$mobile}) and (max-width: #{$desktop - 1px}) {
     @content;
   }
 }
 
 @mixin desktop {
-  @media (min-width: #{$tablet}) {
+  @media (min-width: #{$desktop}) {
     @content;
   }
 }
 
 @mixin large {
-  @media (min-width: #{$desktop}) {
+  @media (min-width: #{$large}) {
     @content;
   }
 }
@@ -114,7 +114,7 @@ $z-tooltip: 1070;
 
 @mixin hover-lift {
   transition: transform $transition-fast, box-shadow $transition-fast;
-  
+
   &:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px 0 var(--shadow-color), 0 2px 4px 0 var(--shadow-color);
