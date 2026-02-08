@@ -702,8 +702,8 @@ function Admin() {
           </div>
           <div
             className={`admin__section-content ${!expandedSections.settings
-                ? "admin__section-content--collapsed"
-                : ""
+              ? "admin__section-content--collapsed"
+              : ""
               }`}
           >
             <div className="admin__settings">
@@ -820,14 +820,12 @@ function Admin() {
           </div>
           <div
             className={`admin__section-content ${!expandedSections.cleanup
-                ? "admin__section-content--collapsed"
-                : ""
+              ? "admin__section-content--collapsed"
+              : ""
               }`}
           >
             <p>
-              Șterge rezervările și notificările mai vechi de 7 zile din
-              colecțiile oficiale (folosite în producție) sau din replicile
-              locale (`*_local`).
+              Șterge rezervările și notificările mai vechi de 7 zile.
             </p>
             <div className="admin__cleanup-actions">
               <button
@@ -837,27 +835,11 @@ function Admin() {
               >
                 {cleanupLoading.official ? (
                   <>
-                    <LoadingSpinner size="sm" inline /> Se curăță (oficial)...
+                    <LoadingSpinner size="sm" inline /> Se curăță...
                   </>
                 ) : (
-                  "Șterge date oficiale > 7 zile"
+                  "Curățare date vechi (> 7 zile)"
                 )}
-              </button>
-              <button
-                className="btn btn-secondary"
-                onClick={() => handleManualCleanup("local")}
-                disabled={cleanupLoading.local}
-              >
-                {cleanupLoading.local ? (
-                  <>
-                    <LoadingSpinner size="sm" inline /> Se curăță (local)...
-                  </>
-                ) : (
-                  "Șterge date locale > 7 zile"
-                )}
-              </button>
-              <button className="btn btn-secondary">
-                <Link to="/local-tools">Sincronizare date prod vs local</Link>
               </button>
             </div>
           </div>
@@ -894,8 +876,8 @@ function Admin() {
           </div>
           <div
             className={`admin__section-content ${!expandedSections.maintenance
-                ? "admin__section-content--collapsed"
-                : ""
+              ? "admin__section-content--collapsed"
+              : ""
               }`}
           >
             <div className="admin__maintenance-form">
@@ -937,8 +919,8 @@ function Admin() {
                   <div
                     key={slot}
                     className={`time-slot ${maintenanceSlots.includes(slot)
-                        ? "time-slot--selected"
-                        : ""
+                      ? "time-slot--selected"
+                      : ""
                       }`}
                     onClick={() => toggleMaintenanceSlot(slot)}
                   >
@@ -1188,8 +1170,8 @@ function Admin() {
           </div>
           <div
             className={`admin__section-content ${!expandedSections.bookings
-                ? "admin__section-content--collapsed"
-                : ""
+              ? "admin__section-content--collapsed"
+              : ""
               }`}
           >
             <div className="admin__filters">
