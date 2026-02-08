@@ -10,7 +10,6 @@ import { AuthProvider } from "./utils/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Admin from "./pages/Admin";
-import LocalDataTools from "./pages/LocalDataTools";
 import "./assets/styles/theme.scss";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -29,7 +28,7 @@ function App() {
               closeOnClick
               rtl={false}
               pauseOnFocusLoss
-              draggable 
+              draggable
               theme="colored"
               aria-label="Notifications"
             />
@@ -39,43 +38,35 @@ function App() {
             <main className="main-content">
               <Routes>
                 <Route path="/" element={<Auth />} />
-                <Route 
-                  path="/dashboard" 
+                <Route
+                  path="/dashboard"
                   element={
                     <ProtectedRoute requireAuth={true} requireApproval={true}>
                       <Home />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/profile" 
+                <Route
+                  path="/profile"
                   element={
                     <ProtectedRoute requireAuth={true}>
                       <Profile />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/my-books" 
+                <Route
+                  path="/my-books"
                   element={
                     <ProtectedRoute requireAuth={true}>
                       <MyBooks />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/admin" 
+                <Route
+                  path="/admin"
                   element={
                     <ProtectedRoute requireAuth={true} adminOnly={true}>
                       <Admin />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route
-                  path="/local-tools"
-                  element={
-                    <ProtectedRoute requireAuth={true} adminOnly={true}>
-                      <LocalDataTools />
                     </ProtectedRoute>
                   }
                 />
