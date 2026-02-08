@@ -1,19 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { useAuth } from "../utils/AuthContext";
+import { Link } from "react-router-dom";
+import DatePicker from "react-multi-date-picker";
+import dayjs from "dayjs";
 import AXIOS from "../utils/Axios_config";
 import { toast_error, toast_success } from "../utils/Toasts";
 import { useSocket } from "../utils/SocketContext";
-import DatePicker from "react-multi-date-picker";
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
-import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
+import { useAuth } from "../utils/AuthContext";
 import LoadingSpinner from "../components/LoadingSpinner";
 import "../assets/styles/pages/Admin.scss";
-
-dayjs.extend(utc);
-dayjs.extend(timezone);
-dayjs.extend(isSameOrAfter);
+const BUCURESTI_TZ = "Europe/Bucharest";
 
 // Helper function to calculate duration between two time strings
 const calculateDuration = (startTime, endTime) => {
@@ -96,6 +91,57 @@ const safeRender = (value, fallback = "N/A") => {
   return fallback;
 };
 
+const extractCreatedAt = (entry) => {
+  if (!entry) {
+    return 0;
+  }
+
+  const rawValue =
+    entry.created_at ?? entry.createdAt ?? entry.created ?? entry.createdAT ?? null;
+
+  if (rawValue === null || rawValue === undefined) {
+    return 0;
+  }
+
+  if (typeof rawValue === "number") {
+    return rawValue;
+  }
+
+  if (typeof rawValue === "string") {
+    const numeric = Number(rawValue);
+    if (!Number.isNaN(numeric)) {
+      return numeric;
+    }
+
+    const parsed = dayjs(rawValue);
+    if (parsed.isValid()) {
+      return parsed.valueOf();
+    }
+
+    return 0;
+  }
+
+  if (typeof rawValue === "object") {
+    if (rawValue._seconds !== undefined) {
+      const nanos = rawValue._nanoseconds ?? 0;
+      return rawValue._seconds * 1000 + Math.floor(nanos / 1_000_000);
+    }
+    if (rawValue.seconds !== undefined) {
+      const nanos = rawValue.nanoseconds ?? 0;
+      return rawValue.seconds * 1000 + Math.floor(nanos / 1_000_000);
+    }
+    if (rawValue.toDate instanceof Function) {
+      const dateValue = rawValue.toDate();
+      return dateValue instanceof Date ? dateValue.getTime() : 0;
+    }
+  }
+
+  return 0;
+};
+
+const sortByCreatedAtDesc = (list = []) =>
+  [...list].sort((a, b) => extractCreatedAt(b) - extractCreatedAt(a));
+
 function Admin() {
   const { user, loading } = useAuth();
   const socket = useSocket();
@@ -119,11 +165,16 @@ function Admin() {
   const [savingSetting, setSavingSetting] = useState(null);
   const [maintenanceSubmitting, setMaintenanceSubmitting] = useState(false);
   const [maintenanceDeleting, setMaintenanceDeleting] = useState({});
+  const [cleanupLoading, setCleanupLoading] = useState({
+    official: false,
+    local: false,
+  });
   const [userActionLoading, setUserActionLoading] = useState({});
   const [bookingActionLoading, setBookingActionLoading] = useState({});
   const [expandedSections, setExpandedSections] = useState({
     users: true,
     settings: true,
+    cleanup: true,
     bookings: false,
     maintenance: false,
   });
@@ -151,10 +202,34 @@ function Admin() {
         }));
       }
     } catch (error) {
-      console.log(error);
+      console.error(error);
       if (error?.response?.status !== 404) {
         toast_error("Nu s-au putut încărca setările!");
       }
+    }
+  };
+
+  const handleManualCleanup = async (scope) => {
+    setCleanupLoading((prev) => ({ ...prev, [scope]: true }));
+    try {
+      const response = await AXIOS.post("/api/programari/cleanup", { scope });
+      if (response.data.success) {
+        toast_success(
+          `Curățare ${scope === "local" ? "locală" : "oficială"} completă: ${response.data.deletedProgramari
+          } programări și ${response.data.deletedNotifications
+          } notificări șterse.`
+        );
+        await getBookings();
+      } else {
+        toast_error(response.data.message || "Curățarea a eșuat.");
+      }
+    } catch (error) {
+      console.error("Manual cleanup error:", error);
+      toast_error(
+        error?.response?.data?.message || "Curățarea manuală a eșuat."
+      );
+    } finally {
+      setCleanupLoading((prev) => ({ ...prev, [scope]: false }));
     }
   };
 
@@ -165,7 +240,7 @@ function Admin() {
         setUsers(rasp.data.users);
       }
     } catch (error) {
-      console.log(error);
+      console.error(error);
       if (error?.response?.status !== 404) {
         toast_error("Nu s-au putut încărca utilizatorii!");
       }
@@ -176,12 +251,11 @@ function Admin() {
   const getBookings = async () => {
     try {
       const rasp = await AXIOS.get("/api/programare");
-      console.log("Bookings response:", rasp.data);
       if (rasp.data.success) {
-        setBookings(rasp.data.programari || []);
+        setBookings(sortByCreatedAtDesc(rasp.data.programari || []));
       }
     } catch (error) {
-      console.log("Bookings error:", error);
+      console.error("Bookings error:", error);
       if (error?.response?.status !== 404) {
         toast_error("Nu s-au putut încărca programările!");
       }
@@ -192,12 +266,11 @@ function Admin() {
   const getMaintenanceIntervals = async () => {
     try {
       const rasp = await AXIOS.get("/api/maintenance");
-      console.log("Maintenance intervals response:", rasp.data);
       if (rasp.data.success) {
         setMaintenanceIntervals(rasp.data.maintenanceIntervals || []);
       }
     } catch (error) {
-      console.log("Maintenance intervals error:", error);
+      console.error("Maintenance intervals error:", error);
       if (error?.response?.status !== 404) {
         toast_error("Nu s-au putut încărca intervalele de mentenanță!");
       }
@@ -206,26 +279,46 @@ function Admin() {
   };
 
   const saveSettings = async (key, value) => {
-    console.log("Saving setting:", key, value);
+    if (savingSetting === key) {
+      return;
+    }
+
+    const previousValue = settings[key];
+
     setSavingSetting(key);
+    setSettings((prev) => ({
+      ...prev,
+      [key]: key === "blockPastSlots" ? Boolean(value) : value,
+    }));
+
     try {
       const rasp = await AXIOS.post("/api/settings", { key, value });
-      console.log("Settings response:", rasp.data);
       if (rasp.data.success) {
+        setSettings((prev) => ({
+          ...prev,
+          ...rasp.data.settings,
+          blockPastSlots: Boolean(rasp.data.settings.blockPastSlots),
+        }));
         // Nu actualizez local - las socket-ul să facă update-ul pentru live data
         toast_success(
           key === "blockPastSlots"
-            ? `Rezervările în trecut au fost ${
-                value ? "blocate" : "deblocate"
-              }!`
-            : `Programările pentru ${
-                key === "m1Enabled" ? "M1" : key === "m2Enabled" ? "M2" : "Uscător"
-              } au fost ${value ? "activate" : "dezactivate"}!`
+            ? `Rezervările în trecut au fost ${value ? "blocate" : "deblocate"
+            }!`
+            : `Programările pentru ${key === "m1Enabled"
+              ? "M1"
+              : key === "m2Enabled"
+                ? "M2"
+                : "Uscător"
+            } au fost ${value ? "activate" : "dezactivate"}!`
         );
       }
     } catch (error) {
-      console.log("Settings error:", error);
+      console.error("Settings error:", error);
       toast_error("Eroare la salvarea setărilor!");
+      setSettings((prev) => ({
+        ...prev,
+        [key]: key === "blockPastSlots" ? Boolean(previousValue) : previousValue,
+      }));
     } finally {
       setSavingSetting(null);
     }
@@ -244,7 +337,7 @@ function Admin() {
         toast_success(`Cont ${!currentApproval ? "aprobat" : "dezaprobat"}!`);
       }
     } catch (error) {
-      console.log(error);
+      console.error(error);
       toast_error("Eroare la actualizarea aprobării!");
     } finally {
       setUserActionLoading((prev) => {
@@ -269,7 +362,7 @@ function Admin() {
         toast_success("Rol actualizat!");
       }
     } catch (error) {
-      console.log(error);
+      console.error(error);
       toast_error("Eroare la actualizarea rolului!");
     } finally {
       setUserActionLoading((prev) => {
@@ -295,12 +388,14 @@ function Admin() {
       });
       if (rasp.data.success) {
         // Remove booking from admin view (it becomes inactive)
-        setBookings(bookings.filter((b) => b.uid !== bookingId));
+        setBookings((prev) =>
+          sortByCreatedAtDesc(prev.filter((b) => b.uid !== bookingId))
+        );
         setReasons({ ...reasons, [bookingId]: "" });
         toast_success("Rezervare anulată și notificare trimisă!");
       }
     } catch (error) {
-      console.log(error);
+      console.error(error);
       toast_error("Eroare la anularea rezervării!");
     } finally {
       setBookingActionLoading((prev) => {
@@ -312,21 +407,14 @@ function Admin() {
   };
 
   const handleMaintenanceSubmit = async () => {
-    if (!maintenanceMachine || maintenanceSlots.length === 0) {
-      toast_error("Selectează mașina și cel puțin un slot pentru mentenanță!");
+    if (!maintenanceMachine || maintenanceSlots.length <= 1) {
+      toast_error("Selectează mașina și cel puțin 2 sloturi pentru mentenanță!");
       return;
     }
 
     setMaintenanceSubmitting(true);
     try {
       const dateToSend = dayjs(maintenanceDate).format("DD/MM/YYYY");
-      console.log("Sending maintenance data:", {
-        machine: maintenanceMachine,
-        date: dateToSend,
-        startTime: maintenanceSlots[0],
-        endTime: maintenanceSlots[maintenanceSlots.length - 1],
-        slots: maintenanceSlots,
-      });
 
       const rasp = await AXIOS.post("/api/maintenance", {
         machine: maintenanceMachine,
@@ -336,8 +424,6 @@ function Admin() {
         slots: maintenanceSlots,
       });
 
-      console.log("Maintenance response:", rasp.data);
-
       if (rasp.data.success) {
         toast_success("Interval de mentenanță adăugat și rezervările anulate!");
         setMaintenanceMachine("");
@@ -346,7 +432,7 @@ function Admin() {
         getBookings();
       }
     } catch (error) {
-      console.log("Maintenance error:", error);
+      console.error("Maintenance error:", error);
       toast_error("Eroare la adăugarea mentenanței!");
     } finally {
       setMaintenanceSubmitting(false);
@@ -364,7 +450,7 @@ function Admin() {
         toast_success("Interval de mentenanță șters!");
       }
     } catch (error) {
-      console.log(error);
+      console.error(error);
       toast_error("Eroare la ștergerea mentenanței!");
     } finally {
       setMaintenanceDeleting((prev) => {
@@ -413,38 +499,34 @@ function Admin() {
 
   useEffect(() => {
     if (socket) {
-      console.log("Socket connected:", socket.connected);
-
       const handleSettingsUpdate = (data) => {
-        console.log("Admin received settings update:", data);
         if (
           data.action === "update" &&
           data.settings &&
           data.settings.settings
         ) {
-          console.log("Updating admin settings with:", data.settings.settings);
           // Actualizez toate setările pentru live update
           setSettings((prev) => ({
             ...prev,
             ...data.settings.settings,
-            blockPastSlots: Boolean(
-              data.settings.settings.blockPastSlots
-            ),
+            blockPastSlots: Boolean(data.settings.settings.blockPastSlots),
           }));
         }
       };
 
       const handleUserUpdate = (data) => {
-        if (
-          data.action === "approval_changed" ||
-          data.action === "role_changed"
-        ) {
-          setUsers((prev) =>
-            prev.map((u) => (u.uid === data.userId ? data.user : u))
-          );
-        } else if (data.action === "delete") {
-          setUsers((prev) => prev.filter((u) => u.uid !== data.userId));
-        }
+        setUsers((prev) => {
+          if (data.action === "delete") {
+            return prev.filter((u) => u.uid !== data.userId);
+          }
+
+          const exists = prev.some((u) => u.uid === data.userId);
+          if (exists) {
+            return prev.map((u) => (u.uid === data.userId ? data.user : u));
+          }
+
+          return [data.user, ...prev];
+        });
       };
 
       socket.on("settings", handleSettingsUpdate);
@@ -452,16 +534,22 @@ function Admin() {
 
       const handleProgramareUpdate = (data) => {
         if (data.action === "create") {
-          setBookings((prev) => [data.programare, ...prev]);
+          setBookings((prev) =>
+            sortByCreatedAtDesc([data.programare, ...prev])
+          );
         } else if (data.action === "update") {
           setBookings((prev) =>
-            prev.map((b) =>
-              b.uid === data.programare.uid ? data.programare : b
+            sortByCreatedAtDesc(
+              prev.map((b) =>
+                b.uid === data.programare.uid ? data.programare : b
+              )
             )
           );
         } else if (data.action === "delete") {
           setBookings((prev) =>
-            prev.filter((b) => b.uid !== data.programareId)
+            sortByCreatedAtDesc(
+              prev.filter((b) => b.uid !== data.programareId)
+            )
           );
         }
       };
@@ -521,39 +609,42 @@ function Admin() {
   const currentDate = dayjs().startOf("day");
   const displayedBookings = showActiveBookings
     ? bookings.filter((booking) => {
-        if (!booking.date) return false;
-        try {
-          // Handle both ISO format and DD/MM/YYYY format
-          let bookingDate;
-          if (typeof booking.date === "string" && booking.date.includes("T")) {
-            // ISO format
-            bookingDate = dayjs(booking.date);
-          } else {
-            // DD/MM/YYYY format
-            bookingDate = dayjs(booking.date, "DD/MM/YYYY");
-          }
-          return (
-            bookingDate.isValid() && bookingDate.isSameOrAfter(currentDate)
-          );
-        } catch (error) {
-          console.warn("Invalid booking date:", booking.date);
-          return false;
+      if (!booking.date) return false;
+      try {
+        // Handle both ISO format and DD/MM/YYYY format
+        let bookingDate;
+        if (typeof booking.date === "string" && booking.date.includes("T")) {
+          // ISO format
+          bookingDate = dayjs(booking.date);
+        } else {
+          // DD/MM/YYYY format
+          bookingDate = dayjs(booking.date, "DD/MM/YYYY");
         }
-      })
+        return (
+          bookingDate.isValid() && bookingDate.isSameOrAfter(currentDate)
+        );
+      } catch (error) {
+        console.warn("Invalid booking date:", booking.date);
+        return false;
+      }
+    })
     : bookings;
 
-  const filteredUsers = users.filter((user) => {
+  const filteredUsers = users.filter((adminUser) => {
+    if (!userSearchTerm) return true;
     const searchLower = userSearchTerm.toLowerCase();
     const nume =
-      typeof user.numeComplet === "string"
-        ? user.numeComplet.toLowerCase()
+      typeof adminUser.numeComplet === "string"
+        ? adminUser.numeComplet.toLowerCase()
         : "";
     const email =
-      typeof (user.google?.email || user.email) === "string"
-        ? (user.google?.email || user.email).toLowerCase()
+      typeof (adminUser.google?.email || adminUser.email) === "string"
+        ? (adminUser.google?.email || adminUser.email).toLowerCase()
         : "";
     const camera =
-      typeof user.camera === "string" ? user.camera.toLowerCase() : "";
+      typeof adminUser.camera === "string"
+        ? adminUser.camera.toLowerCase()
+        : "";
 
     return (
       nume.includes(searchLower) ||
@@ -571,7 +662,7 @@ function Admin() {
               className="admin-icon"
               width={30}
               height={30}
-              viewBox="0 0 24 24"
+              viewBoxwBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
             >
@@ -600,9 +691,8 @@ function Admin() {
               Setări Disponibilitate
             </h2>
             <svg
-              className={`toggle-icon ${
-                expandedSections.settings ? "toggle-icon--expanded" : ""
-              }`}
+              className={`toggle-icon ${expandedSections.settings ? "toggle-icon--expanded" : ""
+                }`}
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -611,11 +701,10 @@ function Admin() {
             </svg>
           </div>
           <div
-            className={`admin__section-content ${
-              !expandedSections.settings
+            className={`admin__section-content ${!expandedSections.settings
                 ? "admin__section-content--collapsed"
                 : ""
-            }`}
+              }`}
           >
             <div className="admin__settings">
               <div className="admin__settings-item">
@@ -631,9 +720,8 @@ function Admin() {
                   </span>
                 </div>
                 <div
-                  className={`toggle ${
-                    settings.m1Enabled ? "toggle--active" : ""
-                  }`}
+                  className={`toggle ${settings.m1Enabled ? "toggle--active" : ""
+                    }`}
                   onClick={() => saveSettings("m1Enabled", !settings.m1Enabled)}
                 />
               </div>
@@ -651,9 +739,8 @@ function Admin() {
                   </span>
                 </div>
                 <div
-                  className={`toggle ${
-                    settings.m2Enabled ? "toggle--active" : ""
-                  }`}
+                  className={`toggle ${settings.m2Enabled ? "toggle--active" : ""
+                    }`}
                   onClick={() => saveSettings("m2Enabled", !settings.m2Enabled)}
                 />
               </div>
@@ -670,9 +757,8 @@ function Admin() {
                   </span>
                 </div>
                 <div
-                  className={`toggle ${
-                    settings.dryerEnabled ? "toggle--active" : ""
-                  }`}
+                  className={`toggle ${settings.dryerEnabled ? "toggle--active" : ""
+                    }`}
                   onClick={() =>
                     saveSettings("dryerEnabled", !settings.dryerEnabled)
                   }
@@ -691,14 +777,88 @@ function Admin() {
                   </span>
                 </div>
                 <div
-                  className={`toggle ${
-                    settings.blockPastSlots ? "toggle--active" : ""
-                  }`}
+                  className={`toggle ${settings.blockPastSlots ? "toggle--active" : ""
+                    }`}
                   onClick={() =>
                     saveSettings("blockPastSlots", !settings.blockPastSlots)
                   }
                 />
               </div>
+            </div>
+          </div>
+        </div>
+        <br />
+        <br />
+
+        {/* Curățare date */}
+        <div className="admin__section admin__section--full-width">
+          <div
+            className="admin__section-header"
+            onClick={() =>
+              setExpandedSections((prev) => ({
+                ...prev,
+                cleanup: !prev.cleanup,
+              }))
+            }
+          >
+            <h2>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M3 6h18M5 6l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12" />
+                <path d="M10 11v6M14 11v6M9 6l1-3h4l1 3" />
+              </svg>
+              Curățare manuală date
+            </h2>
+            <svg
+              className={`toggle-icon ${expandedSections.cleanup ? "toggle-icon--expanded" : ""
+                }`}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </div>
+          <div
+            className={`admin__section-content ${!expandedSections.cleanup
+                ? "admin__section-content--collapsed"
+                : ""
+              }`}
+          >
+            <p>
+              Șterge rezervările și notificările mai vechi de 7 zile din
+              colecțiile oficiale (folosite în producție) sau din replicile
+              locale (`*_local`).
+            </p>
+            <div className="admin__cleanup-actions">
+              <button
+                className="btn btn-danger"
+                onClick={() => handleManualCleanup("official")}
+                disabled={cleanupLoading.official}
+              >
+                {cleanupLoading.official ? (
+                  <>
+                    <LoadingSpinner size="sm" inline /> Se curăță (oficial)...
+                  </>
+                ) : (
+                  "Șterge date oficiale > 7 zile"
+                )}
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => handleManualCleanup("local")}
+                disabled={cleanupLoading.local}
+              >
+                {cleanupLoading.local ? (
+                  <>
+                    <LoadingSpinner size="sm" inline /> Se curăță (local)...
+                  </>
+                ) : (
+                  "Șterge date locale > 7 zile"
+                )}
+              </button>
+              <button className="btn btn-secondary">
+                <Link to="/local-tools">Sincronizare date prod vs local</Link>
+              </button>
             </div>
           </div>
         </div>
@@ -723,9 +883,8 @@ function Admin() {
               Mentenanță
             </h2>
             <svg
-              className={`toggle-icon ${
-                expandedSections.maintenance ? "toggle-icon--expanded" : ""
-              }`}
+              className={`toggle-icon ${expandedSections.maintenance ? "toggle-icon--expanded" : ""
+                }`}
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -734,11 +893,10 @@ function Admin() {
             </svg>
           </div>
           <div
-            className={`admin__section-content ${
-              !expandedSections.maintenance
+            className={`admin__section-content ${!expandedSections.maintenance
                 ? "admin__section-content--collapsed"
                 : ""
-            }`}
+              }`}
           >
             <div className="admin__maintenance-form">
               <h3>Adaugă interval mentenanță</h3>
@@ -778,11 +936,10 @@ function Admin() {
                 {generateTimeSlots().map((slot) => (
                   <div
                     key={slot}
-                    className={`time-slot ${
-                      maintenanceSlots.includes(slot)
+                    className={`time-slot ${maintenanceSlots.includes(slot)
                         ? "time-slot--selected"
                         : ""
-                    }`}
+                      }`}
                     onClick={() => toggleMaintenanceSlot(slot)}
                   >
                     {slot}
@@ -874,9 +1031,8 @@ function Admin() {
               Utilizatori ({users.length})
             </h2>
             <svg
-              className={`toggle-icon ${
-                expandedSections.users ? "toggle-icon--expanded" : ""
-              }`}
+              className={`toggle-icon ${expandedSections.users ? "toggle-icon--expanded" : ""
+                }`}
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -885,9 +1041,8 @@ function Admin() {
             </svg>
           </div>
           <div
-            className={`admin__section-content ${
-              !expandedSections.users ? "admin__section-content--collapsed" : ""
-            }`}
+            className={`admin__section-content ${!expandedSections.users ? "admin__section-content--collapsed" : ""
+              }`}
           >
             <div className="admin__search">
               <svg
@@ -939,15 +1094,16 @@ function Admin() {
                           <td>
                             <div className="admin__actions">
                               <button
-                                className={`btn ${
-                                  user.validate ? "btn-danger" : "btn-success"
-                                }`}
+                                className={`btn ${user.validate ? "btn-danger" : "btn-success"
+                                  }`}
                                 onClick={() => {
                                   if (userActionLoading[`${user.uid}-approval`])
                                     return;
                                   toggleApproval(user.uid, user.validate);
                                 }}
-                                disabled={!!userActionLoading[`${user.uid}-approval`]}
+                                disabled={
+                                  !!userActionLoading[`${user.uid}-approval`]
+                                }
                               >
                                 {userActionLoading[`${user.uid}-approval`] ? (
                                   <>
@@ -963,10 +1119,13 @@ function Admin() {
                               <button
                                 className="btn btn-primary"
                                 onClick={() => {
-                                  if (userActionLoading[`${user.uid}-role`]) return;
+                                  if (userActionLoading[`${user.uid}-role`])
+                                    return;
                                   toggleAdmin(user.uid, user.role);
                                 }}
-                                disabled={!!userActionLoading[`${user.uid}-role`]}
+                                disabled={
+                                  !!userActionLoading[`${user.uid}-role`]
+                                }
                               >
                                 {userActionLoading[`${user.uid}-role`] ? (
                                   <>
@@ -1018,9 +1177,8 @@ function Admin() {
               Programări ({bookings.length})
             </h2>
             <svg
-              className={`toggle-icon ${
-                expandedSections.bookings ? "toggle-icon--expanded" : ""
-              }`}
+              className={`toggle-icon ${expandedSections.bookings ? "toggle-icon--expanded" : ""
+                }`}
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -1029,11 +1187,10 @@ function Admin() {
             </svg>
           </div>
           <div
-            className={`admin__section-content ${
-              !expandedSections.bookings
+            className={`admin__section-content ${!expandedSections.bookings
                 ? "admin__section-content--collapsed"
                 : ""
-            }`}
+              }`}
           >
             <div className="admin__filters">
               <input
@@ -1091,9 +1248,9 @@ function Admin() {
                               {booking.duration
                                 ? `${safeRender(booking.duration)} min`
                                 : `${calculateDuration(
-                                    booking.start_interval_time,
-                                    booking.final_interval_time
-                                  )} min`}
+                                  booking.start_interval_time,
+                                  booking.final_interval_time
+                                )} min`}
                             </td>
                             <td>{safeRender(booking.user?.numeComplet)}</td>
                             <td>{safeRender(booking.user?.camera)}</td>

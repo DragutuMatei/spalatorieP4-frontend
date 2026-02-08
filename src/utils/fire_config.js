@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
-import { getAuth,browserLocalPersistence, inMemoryPersistence } from "firebase/auth";
+import { getAuth, browserLocalPersistence, inMemoryPersistence } from "firebase/auth";
 import { getDatabase } from "firebase/database";
+import { getFirestore } from "firebase/firestore";
 
 // Initialize Firebase
 const app = initializeApp({
@@ -15,6 +16,7 @@ const app = initializeApp({
 
 const google_auth = getAuth(app);
 const db = getDatabase(app);
+const firestore = getFirestore(app);
 
 
 function isSessionStorageAvailable() {
@@ -39,4 +41,4 @@ google_auth.setPersistence(
   isSessionStorageAvailable() ? browserLocalPersistence : inMemoryPersistence
 );
 
-export { db, app, google_auth };
+export { db, app, google_auth, firestore };

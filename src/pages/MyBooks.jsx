@@ -1,214 +1,3 @@
-// import React, { useEffect, useState } from "react";
-// import { useAuth } from "../utils/AuthContext";
-// import AXIOS from "../utils/Axios_config";
-// import { toast_error, toast_success } from "../utils/Toasts";
-// import dayjs from "dayjs";
-// import utc from "dayjs/plugin/utc";
-// import timezone from "dayjs/plugin/timezone";
-// import "dayjs/locale/ro";
-// import customParseFormat from "dayjs/plugin/customParseFormat";
-// import { useSocket } from "../utils/SocketContext";
-// import "../assets/styles/pages/MyBooks.scss";
-
-// dayjs.extend(customParseFormat);
-// dayjs.extend(utc);
-// dayjs.extend(timezone);
-// dayjs.locale("ro");
-
-// function MyBooks() {
-//   const socket = useSocket();
-//   const [programari, setProgramari] = useState([]);
-//   const [loading, setLoading] = useState(true);
-//   const { user } = useAuth();
-
-//   const getProgramari = async () => {
-//     if (!loading && user) {
-//       try {
-//         const rasp = await AXIOS.get(`/api/programare/${user.uid}`);
-//         if (rasp.data.success) {
-//           setProgramari(rasp.data.programari);
-//         } else {
-//           toast_error(
-//             rasp.data.message || "Eroare la incarcarea programarilor."
-//           ); // Mesaj implicit
-//           setProgramari([]); // Asigură-te că starea este resetată
-//         }
-//       } catch (error) {
-//         console.error("Eroare la incarcarea programarilor:", error);
-//         toast_error(error.message || "Eroare la incarcarea programarilor."); // Mesaj implicit
-//         setProgramari([]); // Asigură-te că starea este resetată
-//       }
-//     }
-//   };
-
-//   useEffect(() => {
-//     getProgramari();
-
-//     socket.on("programare", (data) => {
-//       console.log("Received programare event:", data);
-//       // Handle the programare event based on the action type
-//       switch (data.action) {
-//         case "create":
-//           // Update the programari state with the new programare
-//           if (data.programare.userUid === user.uid) {
-//             getProgramari();
-//           }
-//           break;
-//         case "update":
-//           // Update the programari state with the updated programare
-//           if (data.programare.userUid === user.uid) {
-//             getProgramari();
-//           }
-//           break;
-//         case "delete":
-//           // Remove the programare from the programari state
-//           setProgramari((prevProgramari) =>
-//             prevProgramari.filter(
-//               (programare) => programare.uid !== data.programareId
-//             )
-//           );
-//           break;
-//         default:
-//           console.warn("Unknown action type:", data.action);
-//       }
-//     });
-
-//     return () => {
-//       socket.off("programare");
-//     };
-//   }, [user, loading, socket]);
-
-//   const addToGoogleCalendar = (pro, start, final) => {
-//     const ziua = dayjs(Date(pro.date)).startOf("day");
-//     const start_time = ziua.add(start, "minutes").subtract(3, "hours");
-//     const final_time = ziua.add(final, "minutes").subtract(3, "hours");
-
-//     const event = {
-//       title: `Rezervare ${pro.machine}`,
-//       description: `Rezervare ${pro.machine} pentru ${
-//         pro.user.numeComplet
-//       } - Durata: ${final - start} minute`,
-//       start: start_time.format("YYYYMMDDTHHmmss"),
-//       end: final_time.format("YYYYMMDDTHHmmss"),
-//       location: "Spălătorie Cămin",
-//     };
-//     const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
-//       event.title
-//     )}&dates=${event.start}Z/${event.end}Z&details=${encodeURIComponent(
-//       event.description
-//     )}&location=${encodeURIComponent(event.location)}&ctz=Europe/Bucharest`;
-//     window.open(url, "_blank");
-//   };
-
-//   const downloadIcsFile = (pro, start, final) => {
-//     const ziua = dayjs(pro.date).startOf("day");
-//     const startTime = ziua.add(start, "minutes").subtract(3, "hours");
-//     const endTime = ziua.add(final, "minutes").subtract(3, "hours");
-
-//     const icsContent = `
-// BEGIN:VCALENDAR
-// VERSION:2.0
-// BEGIN:VEVENT
-// SUMMARY:Rezervare ${pro.machine}
-// DESCRIPTION:Rezervare ${pro.machine} pentru ${pro.user.numeComplet} - Durata ${
-//       final - start
-//     } minute
-// DTSTART:${startTime.format("YYYYMMDDTHHmmss")}Z
-// DTEND:${endTime.format("YYYYMMDDTHHmmss")}Z
-// LOCATION:Spălătorie Cămin
-// STATUS:CONFIRMED
-// END:VEVENT
-// END:VCALENDAR
-//   `.trim();
-
-//     const blob = new Blob([icsContent], { type: "text/calendar" });
-//     const url = window.URL.createObjectURL(blob);
-//     const link = document.createElement("a");
-//     link.href = url;
-//     link.download = `rezervare-${pro.machine}-${dayjs(pro.date).format(
-//       "YYYYMMDD"
-//     )}.ics`;
-//     document.body.appendChild(link);
-//     link.click();
-//     document.body.removeChild(link);
-//     window.URL.revokeObjectURL(url);
-//   };
-
-//   const sterge = async (programareId) => {
-//     try {
-//       const rasp = await AXIOS.delete(`/api/programare/${programareId}`);
-//       if (rasp.data.success) {
-//         toast_success("Programare stearsa cu succes!");
-//       } else {
-//         toast_error("Eroarea nu a fost stearsa");
-//       }
-//     } catch (error) {
-//       toast_error(error);
-//     }
-//   };
-
-//   return (
-//     <div>
-//       <table>
-//         <thead>
-//           <tr>
-//             <th>Data</th>
-//             <th>Masina</th>
-//             <th>ora inceput</th>
-//             <th>ora final</th>
-//             <th>durata</th>
-//             <th>actiuni</th>
-//           </tr>
-//         </thead>
-//         <tbody>
-//           {programari &&
-//             programari.map((pro) => {
-//               const ziua = dayjs(pro.date);
-
-//               const ora_start = pro.start_interval_time.split(":");
-//               const start_in_min = parseInt(ora_start[0]) * 60 + parseInt(ora_start[1]);
-//               const ora_final = pro.final_interval_time.split(":");
-//               const final_in_min = parseInt(ora_final[0]) * 60 + parseInt(ora_final[1]);
-//               const durata = final_in_min - start_in_min;
-
-//               return (
-//                 <tr key={pro._id}>
-//                   <td>{ziua.format("DD/MM/YYYY")}</td>
-//                   <td>{pro.machine}</td>
-//                   <td>{pro.start_interval_time}</td>
-//                   <td>{pro.final_interval_time}</td>
-//                   <td>{durata}</td>
-//                   <td>
-//                     <button
-//                       onClick={() =>
-//                         addToGoogleCalendar(pro, start_in_min, final_in_min)
-//                       }
-//                     >
-//                       google calendar
-//                     </button>
-//                   </td>
-//                   <td>
-//                     <button
-//                       onClick={() =>
-//                         downloadIcsFile(pro, start_in_min, final_in_min)
-//                       }
-//                     >
-//                       download
-//                     </button>
-//                   </td>
-//                   <td>
-//                     <button onClick={() => sterge(pro.uid)}>sterge</button>
-//                   </td>
-//                 </tr>
-//               );
-//             })}
-//         </tbody>
-//       </table>
-//     </div>
-//   );
-// }
-
-// export default MyBooks;
 
 import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../utils/AuthContext";
@@ -226,6 +15,137 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.locale("ro");
 
+const BUCURESTI_TZ = "Europe/Bucharest";
+
+const extractCreatedAt = (booking) => {
+  if (!booking) {
+    return 0;
+  }
+
+  const rawValue =
+    booking.created_at ?? booking.createdAt ?? booking.createdAT ?? null;
+
+  if (rawValue === null || rawValue === undefined) {
+    return 0;
+  }
+
+  if (typeof rawValue === "number") {
+    return rawValue;
+  }
+
+  if (typeof rawValue === "string") {
+    const numeric = Number(rawValue);
+    if (!Number.isNaN(numeric)) {
+      return numeric;
+    }
+
+    const parsed = dayjs(rawValue);
+    if (parsed.isValid()) {
+      return parsed.valueOf();
+    }
+
+    return 0;
+  }
+
+  if (typeof rawValue === "object") {
+    if (rawValue._seconds !== undefined) {
+      const nanos = rawValue._nanoseconds ?? 0;
+      return rawValue._seconds * 1000 + Math.floor(nanos / 1_000_000);
+    }
+    if (rawValue.seconds !== undefined) {
+      const nanos = rawValue.nanoseconds ?? 0;
+      return rawValue.seconds * 1000 + Math.floor(nanos / 1_000_000);
+    }
+    if (rawValue.toDate instanceof Function) {
+      const dateValue = rawValue.toDate();
+      return dateValue instanceof Date ? dateValue.getTime() : 0;
+    }
+  }
+
+  return 0;
+};
+
+const sortProgramariByCreatedAt = (list = []) =>
+  [...list].sort((a, b) => extractCreatedAt(b) - extractCreatedAt(a));
+
+const KNOWN_DATE_FORMATS = ["DD/MM/YYYY", "DD.MM.YYYY", "YYYY-MM-DD"];
+
+const parseProgramareDate = (value) => {
+  if (value === undefined || value === null) {
+    return dayjs.invalid();
+  }
+
+  if (dayjs.isDayjs(value)) {
+    return value.tz ? value.tz(BUCURESTI_TZ) : value;
+  }
+
+  if (value instanceof Date || typeof value === "number") {
+    const parsed = dayjs(value).tz(BUCURESTI_TZ);
+    return parsed.isValid() ? parsed : dayjs.invalid();
+  }
+
+  if (typeof value === "object") {
+    const seconds = value._seconds ?? value.seconds;
+    if (typeof seconds === "number") {
+      const nanos = value._nanoseconds ?? value.nanoseconds ?? 0;
+      const parsed = dayjs
+        .unix(seconds)
+        .add(Math.floor(nanos / 1_000_000), "millisecond")
+        .tz(BUCURESTI_TZ);
+      return parsed.isValid() ? parsed : dayjs.invalid();
+    }
+
+    if (typeof value.toDate === "function") {
+      const parsed = dayjs(value.toDate()).tz(BUCURESTI_TZ);
+      return parsed.isValid() ? parsed : dayjs.invalid();
+    }
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return dayjs.invalid();
+    }
+
+    if (trimmed.includes("T")) {
+      const iso = dayjs(trimmed);
+      return iso.isValid() ? iso.tz(BUCURESTI_TZ) : dayjs.invalid();
+    }
+
+    for (const format of KNOWN_DATE_FORMATS) {
+      const parsed = dayjs.tz(trimmed, format, BUCURESTI_TZ, true);
+      if (parsed.isValid()) {
+        return parsed;
+      }
+    }
+
+    const fallback = dayjs(trimmed).tz(BUCURESTI_TZ);
+    return fallback.isValid() ? fallback : dayjs.invalid();
+  }
+
+  return dayjs.invalid();
+};
+
+const toBucharestDayjs = (value) => {
+  if (!value) {
+    return dayjs.invalid();
+  }
+  if (dayjs.isDayjs(value)) {
+    return value.tz ? value.tz(BUCURESTI_TZ) : value;
+  }
+  if (typeof value === "string") {
+    if (value.includes("T")) {
+      const parsed = dayjs(value);
+      return parsed.isValid() ? parsed.tz(BUCURESTI_TZ) : dayjs.invalid();
+    }
+    return parseProgramareDate(value);
+  }
+  if (value instanceof Date || typeof value === "number") {
+    return dayjs(value).tz(BUCURESTI_TZ);
+  }
+  return dayjs.invalid();
+};
+
 function MyBooks() {
   const socket = useSocket();
   const [programari, setProgramari] = useState([]);
@@ -239,7 +159,7 @@ function MyBooks() {
     try {
       const { data } = await AXIOS.get(`/api/programare/${user.uid}`);
       if (data.success) {
-        setProgramari(data.programari);
+        setProgramari(sortProgramariByCreatedAt(data.programari));
       } else {
         toast_error(data.message || "Eroare la incarcarea programarilor.");
         setProgramari([]);
@@ -292,40 +212,71 @@ function MyBooks() {
   }, [isMobile]);
 
   useEffect(() => {
-    socket.on("programare", ({ action, programare, programareId }) => {
-      if (!user) return;
+    if (!socket || !user) {
+      return;
+    }
+
+    const handleProgramareEvent = ({ action, programare, programareId }) => {
+      const targetUid =
+        programare?.user?.uid || programare?.userUid || programare?.user_id;
 
       switch (action) {
         case "create":
-          if (programare.user?.uid === user.uid) {
-            setProgramari((prev) => [...prev, programare]);
+          if (targetUid === user.uid && programare) {
+            setProgramari((prev) => {
+              const exists = prev.some((p) => p.uid === programare.uid);
+              if (exists) {
+                return sortProgramariByCreatedAt(
+                  prev.map((p) => (p.uid === programare.uid ? programare : p))
+                );
+              }
+              return sortProgramariByCreatedAt([...prev, programare]);
+            });
           }
           break;
         case "update":
-          if (programare.user?.uid === user.uid) {
-            setProgramari((prev) =>
-              prev.map((p) => (p.uid === programare.uid ? programare : p))
-            );
+          if (targetUid === user.uid && programare) {
+            setProgramari((prev) => {
+              const exists = prev.some((p) => p.uid === programare.uid);
+              if (!exists) {
+                return sortProgramariByCreatedAt([...prev, programare]);
+              }
+              if (programare.active && programare.active.status === false) {
+                return sortProgramariByCreatedAt(
+                  prev.map((p) => (p.uid === programare.uid ? programare : p))
+                );
+              }
+              return sortProgramariByCreatedAt(
+                prev.map((p) => (p.uid === programare.uid ? programare : p))
+              );
+            });
           }
           break;
         case "delete":
-          setProgramari((prev) => prev.filter((p) => p.uid !== programareId));
+          setProgramari((prev) =>
+            sortProgramariByCreatedAt(prev.filter((p) => p.uid !== programareId))
+          );
           break;
         default:
           console.warn("Unknown action type:", action);
       }
-    });
+    };
+
+    socket.on("programare", handleProgramareEvent);
 
     return () => {
-      socket.off("programare");
+      socket.off("programare", handleProgramareEvent);
     };
   }, [socket, user]);
 
   const getTimes = (date, start, end) => {
-    const ziua = dayjs(date).startOf("day");
+    const bookingDay = parseProgramareDate(date);
+    const ziua = bookingDay.isValid()
+      ? bookingDay.startOf("day")
+      : dayjs.tz(date, BUCURESTI_TZ).startOf("day");
     return {
-      start: ziua.add(start, "minutes").subtract(3, "hours"),
-      end: ziua.add(end, "minutes").subtract(3, "hours"),
+      start: ziua.add(start, "minutes"),
+      end: ziua.add(end, "minutes"),
     };
   };
 
@@ -340,8 +291,8 @@ function MyBooks() {
       description: `Rezervare ${pro.machine} pentru ${
         pro.user.numeComplet
       } - Durata: ${final - start} minute`,
-      start: start_time.format("YYYYMMDDTHHmmss"),
-      end: final_time.format("YYYYMMDDTHHmmss"),
+      start: start_time.tz(BUCURESTI_TZ).utc().format("YYYYMMDDTHHmmss"),
+      end: final_time.tz(BUCURESTI_TZ).utc().format("YYYYMMDDTHHmmss"),
       location: "Spălătorie Cămin",
     };
     const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
@@ -362,8 +313,8 @@ SUMMARY:Rezervare ${pro.machine}
 DESCRIPTION:Rezervare ${pro.machine} pentru ${pro.user.numeComplet} - Durata ${
       final - start
     } minute
-DTSTART:${startTime.format("YYYYMMDDTHHmmss")}Z
-DTEND:${endTime.format("YYYYMMDDTHHmmss")}Z
+DTSTART:${startTime.tz(BUCURESTI_TZ).utc().format("YYYYMMDDTHHmmss")}Z
+DTEND:${endTime.tz(BUCURESTI_TZ).utc().format("YYYYMMDDTHHmmss")}Z
 LOCATION:Spălătorie Cămin
 STATUS:CONFIRMED
 END:VEVENT
@@ -527,7 +478,7 @@ END:VCALENDAR
                             <div>
                               <span className="label">Data</span>
                               <span className="value">
-                                {dayjs(pro.date).format("DD/MM/YYYY")}
+                                {toBucharestDayjs(pro.date).format("DD/MM/YYYY")}
                               </span>
                             </div>
                           </div>
@@ -652,7 +603,9 @@ END:VCALENDAR
                                 : ""
                             }
                           >
-                            <td>{dayjs(pro.date).format("DD/MM/YYYY")}</td>
+                            <td>
+                              {toBucharestDayjs(pro.date).format("DD/MM/YYYY")}
+                            </td>
                             <td>{pro.machine}</td>
                             <td>{pro.start_interval_time}</td>
                             <td>{pro.final_interval_time}</td>
@@ -730,7 +683,7 @@ END:VCALENDAR
                                         )
                                       }
                                     >
-                                      Download
+                                      Download ics
                                     </button>
                                   </>
                                 )}
