@@ -1346,12 +1346,19 @@ function Home({ userApproved = false }) {
       .filter((booking) => booking.machine === DRYER_MACHINE)
       .filter((booking) => booking.active?.status === true)
       .map((booking) => {
-        const start = toBucharestDayjs(
-          `${booking.date} ${booking.start_interval_time}`
-        );
-        const end = toBucharestDayjs(
-          `${booking.date} ${booking.final_interval_time}`
-        );
+        let start, end;
+
+        if (booking.startsAt && booking.endsAt) {
+          start = dayjs(booking.startsAt).tz(BUCURESTI_TZ);
+          end = dayjs(booking.endsAt).tz(BUCURESTI_TZ);
+        } else {
+          start = toBucharestDayjs(
+            `${booking.date} ${booking.start_interval_time}`
+          );
+          end = toBucharestDayjs(
+            `${booking.date} ${booking.final_interval_time}`
+          );
+        }
 
         return {
           ...booking,
