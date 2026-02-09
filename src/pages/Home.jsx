@@ -1374,11 +1374,14 @@ function Home({ userApproved = false }) {
 
     const nowBucharest = dayjs().tz(BUCURESTI_TZ);
 
-    const next = allActiveDryerBookings.find((booking) =>
-      booking.endsAt.isAfter(nowBucharest)
+    // Find the booking where NOW is between startsAt and endsAt
+    const currentActive = allActiveDryerBookings.find(
+      (booking) =>
+        nowBucharest.isSameOrAfter(booking.startsAt) &&
+        nowBucharest.isBefore(booking.endsAt)
     );
 
-    return next || allActiveDryerBookings[0];
+    return currentActive || null;
   }, [usersProgramari, dryerStatusTick]);
 
   const dryerRemainingMinutes = useMemo(() => {

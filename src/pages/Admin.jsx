@@ -8,6 +8,8 @@ import { useSocket } from "../utils/SocketContext";
 import { useAuth } from "../utils/AuthContext";
 import LoadingSpinner from "../components/LoadingSpinner";
 import customParseFormat from "dayjs/plugin/customParseFormat";
+import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
+
 import {
   BarChart,
   Bar,
@@ -25,6 +27,7 @@ import "../assets/styles/pages/Admin.scss";
 const BUCURESTI_TZ = "Europe/Bucharest";
 
 dayjs.extend(customParseFormat);
+dayjs.extend(isSameOrAfter);
 
 const COLORS = {
   M1: "#0088FE",     // Blue
@@ -183,6 +186,7 @@ function Admin() {
   const [debouncedBookingSearchTerm, setDebouncedBookingSearchTerm] = useState("");
   const [reasons, setReasons] = useState({});
   const [showActiveBookings, setShowActiveBookings] = useState(false);
+  const [showGroupedBookings, setShowGroupedBookings] = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: "date", direction: "desc" });
   const [maintenanceDate, setMaintenanceDate] = useState(dayjs().toDate());
   const [maintenanceMachine, setMaintenanceMachine] = useState("");
@@ -202,6 +206,24 @@ function Admin() {
     cleanup: true,
     stats: true,
   });
+
+  // Bulk Selection State
+  const [selectedBookings, setSelectedBookings] = useState(new Set());
+  const [lastSelectedId, setLastSelectedId] = useState(null);
+  const [bulkActionReason, setBulkActionReason] = useState("");
+
+  // Deselect on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setSelectedBookings(new Set());
+        setLastSelectedId(null);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   // --- Statistics Logic ---
 
@@ -351,6 +373,10 @@ function Admin() {
           }
           // Check if active status is true AND date is not past
           // OR if we just rely on the 'active' toggle showing future stuff
+          // FIX: explicitly exclude cancelled bookings when "Active Only" is ON
+          const isCancelled = booking.active?.cancelledBy || booking.active?.status === false;
+          if (isCancelled) return false;
+
           if (!bookingDate.isValid() || !bookingDate.isSameOrAfter(currentDate)) {
             return false;
           }
@@ -388,6 +414,11 @@ function Admin() {
         // Parse dates for comparison
         const getDate = (item) => {
           if (!item.date) return 0;
+          if (typeof item.date === "object") {
+            if (item.date._seconds) return item.date._seconds * 1000;
+            if (item.date.seconds) return item.date.seconds * 1000;
+            if (item.date.toDate) return item.date.toDate().getTime();
+          }
           if (typeof item.date === "string" && item.date.includes("T")) {
             return dayjs(item.date).valueOf();
           }
@@ -411,6 +442,103 @@ function Admin() {
       return 0;
     });
   }, [filteredBookings, sortConfig]);
+
+  // 3. Group bookings if enabled
+  const groupedBookings = useMemo(() => {
+    if (!showGroupedBookings) return displayedBookings;
+
+    // Sort heavily to ensure consecutive slots are adjacent: Date -> Machine -> StartTime
+    const sortedForGrouping = [...displayedBookings].sort((a, b) => {
+      // 1. Date
+      const dateA = typeof a.date === "string" && a.date.includes("T") ? dayjs(a.date).format("YYYY-MM-DD") : dayjs(a.date, "DD/MM/YYYY").format("YYYY-MM-DD");
+      const dateB = typeof b.date === "string" && b.date.includes("T") ? dayjs(b.date).format("YYYY-MM-DD") : dayjs(b.date, "DD/MM/YYYY").format("YYYY-MM-DD");
+      if (dateA !== dateB) return dateA.localeCompare(dateB);
+
+      // 2. Machine
+      if (a.machine !== b.machine) return a.machine.localeCompare(b.machine);
+
+      // 3. User
+      const userA = a.user?.uid || "";
+      const userB = b.user?.uid || "";
+      if (userA !== userB) return userA.localeCompare(userB);
+
+      // 4. Start Time
+      return (a.start_interval_time || "").localeCompare(b.start_interval_time || "");
+    });
+
+    const groups = [];
+    if (sortedForGrouping.length === 0) return groups;
+
+    let currentGroup = {
+      ...sortedForGrouping[0],
+      originalIds: [sortedForGrouping[0].uid],
+      duration: sortedForGrouping[0].duration || 30 // assume 30 if missing
+    };
+
+    for (let i = 1; i < sortedForGrouping.length; i++) {
+      const next = sortedForGrouping[i];
+      const prev = currentGroup;
+
+      const formatD = (d) => typeof d === "string" && d.includes("T") ? dayjs(d).format("YYYY-MM-DD") : dayjs(d, "DD/MM/YYYY").format("YYYY-MM-DD");
+
+      const isSameDate = formatD(next.date) === formatD(prev.date);
+      const isSameMachine = next.machine === prev.machine;
+      const isSameUser = (next.user?.uid || "") === (prev.user?.uid || "");
+      const isConsecutive = prev.final_interval_time === next.start_interval_time;
+
+      if (isSameDate && isSameMachine && isSameUser && isConsecutive) {
+        // Merge
+        currentGroup.final_interval_time = next.final_interval_time;
+        const nextDuration = next.duration || 30;
+        currentGroup.duration += nextDuration;
+        currentGroup.originalIds.push(next.uid);
+      } else {
+        // Push and reset
+        groups.push(currentGroup);
+        currentGroup = {
+          ...next,
+          originalIds: [next.uid],
+          duration: next.duration || 30
+        };
+      }
+    }
+    groups.push(currentGroup);
+
+    // Finally, re-apply the requested sort order to the grouped results
+    if (sortConfig.key === "date") {
+      return groups.sort((a, b) => {
+        const getDate = (item) => {
+          if (!item.date) return 0;
+          if (typeof item.date === "object") {
+            if (item.date._seconds) return item.date._seconds * 1000;
+            if (item.date.seconds) return item.date.seconds * 1000;
+            if (item.date.toDate) return item.date.toDate().getTime();
+          }
+          if (typeof item.date === "string" && item.date.includes("T")) {
+            return dayjs(item.date).valueOf();
+          }
+          return dayjs(item.date, "DD/MM/YYYY").valueOf();
+        };
+        const dateA = getDate(a);
+        const dateB = getDate(b);
+
+        if (dateA < dateB) return sortConfig.direction === "asc" ? -1 : 1;
+        if (dateA > dateB) return sortConfig.direction === "asc" ? 1 : -1;
+
+        // Secondary sort by time
+        const timeA = a.start_interval_time || "";
+        const timeB = b.start_interval_time || "";
+        if (timeA < timeB) return sortConfig.direction === "asc" ? -1 : 1;
+        if (timeA > timeB) return sortConfig.direction === "asc" ? 1 : -1;
+
+        return 0;
+      });
+    }
+
+    return groups;
+
+  }, [displayedBookings, showGroupedBookings, sortConfig]);
+
 
   const filteredUsers = useMemo(() => {
     return users.filter((adminUser) => {
@@ -646,37 +774,218 @@ function Admin() {
     }
   };
 
-  const deleteBooking = async (bookingId) => {
-    const currentReason = reasons[bookingId];
+  // Helper to find all contiguous bookings for a given target booking
+  const findContiguousBlockIds = (targetBooking, allBookings) => {
+    if (!targetBooking) return [];
+
+    const formatD = (d) => typeof d === "string" && d.includes("T") ? dayjs(d).format("YYYY-MM-DD") : dayjs(d, "DD/MM/YYYY").format("YYYY-MM-DD");
+    const targetDate = formatD(targetBooking.date);
+    const targetMachine = targetBooking.machine;
+    const targetUser = targetBooking.user?.uid;
+
+    // Filter potential candidates (same date, machine, user)
+    // AND NOT cancelled
+    const candidates = allBookings.filter(b => {
+      if (b.active?.cancelledBy || b.active?.message?.toLowerCase().includes("anul")) return false;
+
+      const bDate = formatD(b.date);
+      const bMachine = b.machine;
+      const bUser = b.user?.uid;
+
+      return bDate === targetDate && bMachine === targetMachine && bUser === targetUser;
+    });
+
+    // Sort by time
+    candidates.sort((a, b) => (a.start_interval_time || "").localeCompare(b.start_interval_time || ""));
+
+    // Find the contiguous group containing the target
+    // We iterate and build groups, then pick the one containing target.uid
+
+    let currentGroup = [];
+    const allGroups = [];
+
+    if (candidates.length > 0) {
+      currentGroup = [candidates[0]];
+      for (let i = 1; i < candidates.length; i++) {
+        const prev = currentGroup[currentGroup.length - 1];
+        const curr = candidates[i];
+
+        if (prev.final_interval_time === curr.start_interval_time) {
+          currentGroup.push(curr);
+        } else {
+          allGroups.push(currentGroup);
+          currentGroup = [curr];
+        }
+      }
+      allGroups.push(currentGroup);
+    }
+
+    // Find which group has our target
+    const foundGroup = allGroups.find(g => g.some(b => b.uid === targetBooking.uid));
+
+    return foundGroup ? foundGroup.map(b => b.uid) : [targetBooking.uid];
+  };
+
+  // Renamed from deleteBooking to focus on "Cancellation" (soft delete)
+  const cancelBooking = async (bookingIdOrIds) => {
+    // Determine if we are deleting a single ID or a group of IDs
+    const idsToAction = Array.isArray(bookingIdOrIds) ? bookingIdOrIds : [bookingIdOrIds];
+
+    const primaryId = idsToAction[0];
+    const currentReason = reasons[primaryId];
+
     if (!currentReason || currentReason.trim() === "") {
-      toast_error("Te rugăm să introduci un motiv pentru ștergere!");
+      toast_error("Te rugăm să introduci un motiv pentru anulare!");
       return;
     }
 
-    setBookingActionLoading((prev) => ({ ...prev, [bookingId]: true }));
+    setBookingActionLoading((prev) => ({ ...prev, [primaryId]: 'cancel' }));
+
     try {
-      const rasp = await AXIOS.post("/api/programare/cancel-with-reason", {
-        bookingId,
-        reason: currentReason.trim(),
-      });
-      if (rasp.data.success) {
-        // Remove booking from admin view (it becomes inactive)
-        setBookings((prev) =>
-          sortByCreatedAtDesc(prev.filter((b) => b.uid !== bookingId))
-        );
-        setReasons({ ...reasons, [bookingId]: "" });
-        toast_success("Rezervare anulată și notificare trimisă!");
+      // Execute sequentially
+      for (const uid of idsToAction) {
+        await AXIOS.post("/api/programare/cancel-with-reason", {
+          bookingId: uid,
+          reason: currentReason.trim(),
+        });
       }
+
+      // Update local state: MARK as cancelled, do NOT remove
+      setBookings((prev) =>
+        prev.map((b) => {
+          if (idsToAction.includes(b.uid)) {
+            return {
+              ...b,
+              active: {
+                ...(b.active || {}),
+                status: false,
+                cancelledBy: "admin",
+                message: currentReason.trim()
+              }
+            };
+          }
+          return b;
+        })
+      );
+
+      setReasons((prev) => {
+        const next = { ...prev };
+        delete next[primaryId];
+        return next;
+      });
+      toast_success(idsToAction.length > 1 ? "Programări anulate!" : "Programare anulată!");
+
     } catch (error) {
       console.error(error);
-      toast_error("Eroare la anularea rezervării!");
+      toast_error("Eroare la anularea programării!");
     } finally {
       setBookingActionLoading((prev) => {
         const next = { ...prev };
-        delete next[bookingId];
+        delete next[primaryId];
         return next;
       });
     }
+  };
+
+  // New function for hard delete
+  const permanentlyDeleteBooking = async (bookingIdOrIds) => {
+    // Determine if we are deleting a single ID or a group of IDs
+    // For smart delete: we want to delete the whole block
+    const idsToDelete = Array.isArray(bookingIdOrIds) ? bookingIdOrIds : [bookingIdOrIds];
+
+    // UPDATED: No confirmation dialog as per user request
+
+    const primaryId = idsToDelete[0];
+    setBookingActionLoading((prev) => ({ ...prev, [primaryId]: 'delete' }));
+
+    try {
+      for (const uid of idsToDelete) {
+        await AXIOS.delete(`/api/programare/${uid}`);
+      }
+
+      // Remove from local state
+      setBookings((prev) =>
+        prev.filter((b) => !idsToDelete.includes(b.uid))
+      );
+
+      toast_success("Programări șterse definitiv!");
+
+    } catch (error) {
+      console.error("Delete error:", error);
+      toast_error("Eroare la ștergerea programării!");
+    } finally {
+      setBookingActionLoading((prev) => {
+        const next = { ...prev };
+        delete next[primaryId];
+        return next;
+      });
+    }
+  };
+
+
+
+
+  // --- Bulk Actions Logic ---
+
+  const toggleSelection = (id, shiftKey) => {
+    const newSelected = new Set(selectedBookings);
+
+    if (shiftKey && lastSelectedId) {
+      // Range selection
+      const currentIndex = groupedBookings.findIndex(b => b.uid === id);
+      const lastIndex = groupedBookings.findIndex(b => b.uid === lastSelectedId);
+
+      if (currentIndex !== -1 && lastIndex !== -1) {
+        const start = Math.min(currentIndex, lastIndex);
+        const end = Math.max(currentIndex, lastIndex);
+
+        const range = groupedBookings.slice(start, end + 1);
+        const shouldSelect = !newSelected.has(id); // Determine intent based on clicked item
+
+        range.forEach(b => {
+          if (shouldSelect) newSelected.add(b.uid);
+          else newSelected.delete(b.uid);
+        });
+      }
+    } else {
+      // Single toggle
+      if (newSelected.has(id)) {
+        newSelected.delete(id);
+      } else {
+        newSelected.add(id);
+      }
+    }
+
+    setLastSelectedId(id);
+    setSelectedBookings(newSelected);
+  };
+
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      const allIds = new Set(groupedBookings.map(b => b.uid));
+      setSelectedBookings(allIds);
+    } else {
+      setSelectedBookings(new Set());
+    }
+  };
+
+  const handleBulkCancel = async () => {
+    if (selectedBookings.size === 0) return;
+    if (!bulkActionReason.trim()) {
+      toast_error("Te rugăm să introduci un motiv comun pentru anulare!");
+      return;
+    }
+
+    await cancelBooking(Array.from(selectedBookings));
+    setSelectedBookings(new Set());
+    setBulkActionReason("");
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedBookings.size === 0) return;
+
+    await permanentlyDeleteBooking(Array.from(selectedBookings));
+    setSelectedBookings(new Set());
   };
 
   const handleMaintenanceSubmit = async () => {
@@ -1523,7 +1832,66 @@ function Admin() {
                   Arată doar rezervările active
                 </label>
               </div>
+              <div className="filter-switch" style={{ marginLeft: "1rem" }}>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={showGroupedBookings}
+                    onChange={() => setShowGroupedBookings(!showGroupedBookings)}
+                  />
+                  Intervale consecutive
+                </label>
+              </div>
             </div>
+
+            {/* Bulk Actions Toolbar */}
+            {selectedBookings.size > 0 && (
+              <div style={{
+                backgroundColor: '#fff3cd',
+                padding: '10px',
+                marginBottom: '10px',
+                borderRadius: '5px',
+                border: '1px solid #ffeeba',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                flexWrap: 'wrap'
+              }}>
+                <span style={{ fontWeight: 'bold' }}>{selectedBookings.size} selectate</span>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setSelectedBookings(new Set());
+                    setLastSelectedId(null);
+                  }}
+                  style={{ padding: '0px 8px', fontSize: '0.8rem', marginRight: '5px', lineHeight: '20px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  title="Anulează selecția (Esc)"
+                >
+                  ✕
+                </button>
+                <input
+                  type="text"
+                  placeholder="Motiv comun (pt. anulare)..."
+                  value={bulkActionReason}
+                  onChange={(e) => setBulkActionReason(e.target.value)}
+                  style={{ padding: '5px', borderRadius: '4px', border: '1px solid #ced4da', flex: 1, minWidth: '200px' }}
+                />
+                <button
+                  className="btn btn-warning"
+                  onClick={handleBulkCancel}
+                  style={{ padding: '5px 15px' }}
+                >
+                  Anulează Selectate
+                </button>
+                <button
+                  className="btn btn-danger"
+                  onClick={handleBulkDelete}
+                  style={{ padding: '5px 15px' }}
+                >
+                  Șterge Selectate
+                </button>
+              </div>
+            )}
 
             <div className="admin__table">
               {displayedBookings.length > 0 ? (
@@ -1531,6 +1899,13 @@ function Admin() {
                   <table>
                     <thead>
                       <tr>
+                        <th style={{ width: '40px' }}>
+                          <input
+                            type="checkbox"
+                            checked={groupedBookings.length > 0 && selectedBookings.size === groupedBookings.length}
+                            onChange={handleSelectAll}
+                          />
+                        </th>
                         <th
                           onClick={() => requestSort("date")}
                           style={{ cursor: "pointer", userSelect: "none" }}
@@ -1546,50 +1921,97 @@ function Admin() {
                         <th>Nume</th>
                         <th>Cameră</th>
                         <th>Motiv anulare</th>
-                        <th>Acțiuni</th>
+                        <th style={{ minWidth: "200px" }}>Acțiuni</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {displayedBookings
-                        .map((booking) => (
-                          <tr key={booking.uid}>
-                            <td>{formatDate(booking.date)}</td>
-                            <td>{safeRender(booking.machine)}</td>
-                            <td>{safeRender(booking.start_interval_time)}</td>
-                            <td>{safeRender(booking.final_interval_time)}</td>
-                            <td>
-                              {booking.duration
-                                ? `${safeRender(booking.duration)} min`
-                                : `${calculateDuration(
-                                  booking.start_interval_time,
-                                  booking.final_interval_time
-                                )} min`}
-                            </td>
-                            <td>{safeRender(booking.user?.numeComplet)}</td>
-                            <td>{safeRender(booking.user?.camera)}</td>
-                            <td>
-                              <input
-                                type="text"
-                                value={reasons[booking.uid] || ""}
-                                onChange={(e) =>
-                                  setReasons({
-                                    ...reasons,
-                                    [booking.uid]: e.target.value,
-                                  })
-                                }
-                                placeholder="Motiv anulare..."
-                              />
-                            </td>
-                            <td>
-                              <button
-                                className="btn btn-warning"
-                                onClick={() => deleteBooking(booking.uid)}
-                              >
-                                Anulează
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
+                      {groupedBookings
+                        .map((booking) => {
+                          const isCancelled = booking.active?.cancelledBy || booking.active?.status === false;
+                          return (
+                            <tr key={booking.uid} style={{ opacity: isCancelled ? 0.6 : 1, backgroundColor: isCancelled ? '#fff0f0' : 'inherit' }}>
+                              <td>
+                                <input
+                                  type="checkbox"
+                                  checked={selectedBookings.has(booking.uid)}
+                                  onChange={(e) => {
+                                    // Prevent row click propagation if we add row click handler later
+                                    e.stopPropagation();
+                                  }}
+                                  onClick={(e) => {
+                                    // Handle shift click
+                                    toggleSelection(booking.uid, e.shiftKey);
+                                  }}
+                                />
+                              </td>
+                              <td>{formatDate(booking.date)}</td>
+                              <td>{safeRender(booking.machine)}</td>
+                              <td>{safeRender(booking.start_interval_time)}</td>
+                              <td>{safeRender(booking.final_interval_time)}</td>
+                              <td>
+                                {booking.duration
+                                  ? `${safeRender(booking.duration)} min`
+                                  : `${calculateDuration(
+                                    booking.start_interval_time,
+                                    booking.final_interval_time
+                                  )} min`}
+                              </td>
+                              <td>{safeRender(booking.user?.numeComplet)}</td>
+                              <td>{safeRender(booking.user?.camera)}</td>
+                              <td>
+                                <input
+                                  type="text"
+                                  value={reasons[booking.uid] || ""}
+                                  onChange={(e) =>
+                                    setReasons({
+                                      ...reasons,
+                                      [booking.uid]: e.target.value,
+                                    })
+                                  }
+                                  placeholder="Motiv anulare..."
+                                />
+                              </td>
+                              <td>
+                                <div style={{ display: 'flex', gap: '5px' }}>
+                                  <button
+                                    className="btn btn-warning"
+                                    onClick={() => {
+                                      const blockIds = findContiguousBlockIds(booking, displayedBookings);
+                                      cancelBooking(booking.originalIds || blockIds);
+                                    }}
+                                    disabled={!!bookingActionLoading[booking.uid] || (booking.active?.cancelledBy || booking.active?.status === false)}
+                                    style={{ fontSize: '0.8rem', padding: '5px 10px' }}
+                                  >
+                                    {bookingActionLoading[booking.uid] === 'cancel' ? (
+                                      <LoadingSpinner size="sm" inline />
+                                    ) : (booking.active?.cancelledBy || booking.active?.status === false) ? (
+                                      "Anulat"
+                                    ) : (
+                                      "Anulează"
+                                    )}
+                                  </button>
+                                  <button
+                                    className="btn btn-danger"
+                                    onClick={() => {
+                                      // Smart delete: detect active block 
+                                      // Use originalIds if grouped, otherwise find smart block
+                                      const blockIds = booking.originalIds || findContiguousBlockIds(booking, displayedBookings);
+                                      permanentlyDeleteBooking(blockIds);
+                                    }}
+                                    disabled={!!bookingActionLoading[booking.uid]}
+                                    style={{ fontSize: '0.8rem', padding: '5px 10px' }}
+                                  >
+                                    {bookingActionLoading[booking.uid] === 'delete' ? (
+                                      <LoadingSpinner size="sm" inline />
+                                    ) : (
+                                      "Șterge"
+                                    )}
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
                     </tbody>
                   </table>
                 </div>
