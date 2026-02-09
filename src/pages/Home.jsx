@@ -12,8 +12,9 @@ import { toast_error, toast_success, toast_warn } from "../utils/Toasts";
 import AXIOS from "../utils/Axios_config";
 import { useSocket } from "../utils/SocketContext";
 import LoadingSpinner from "../components/LoadingSpinner";
-import "./Home.scss";
+import CadathonPopup from "../components/CadathonPopup";
 
+import "./Home.scss";
 dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.extend(customParseFormat);
@@ -64,6 +65,7 @@ const toBucharestDayjs = (value) => {
 
 function Home({ userApproved = false }) {
   const [value, setValue] = useState(dayjs().toDate());
+  const [showCadathonPopup, setShowCadathonPopup] = useState(false);
   const [loading, setLoading] = useState(false);
   const [hours, setHours] = useState([]);
   const { user } = useAuth();
@@ -1671,6 +1673,7 @@ function Home({ userApproved = false }) {
         setSelectedMachine("");
         cancelTempReservation();
         emitCancelDryerSelection();
+        setShowCadathonPopup(true);
       } else {
         toast_error(rasp.data.message || "Eroare la salvarea programării!");
       }
@@ -1758,8 +1761,10 @@ function Home({ userApproved = false }) {
         setSelectedMachine("");
         setDryerDurationHours(1);
         setDryerDurationMinutes("");
+        setDryerDurationMinutes("");
         setDryerStatusTick(Date.now());
         emitCancelDryerSelection();
+        setShowCadathonPopup(true);
       } else {
         toast_error(rasp.data.message || "Eroare la rezervarea uscătorului.");
       }
@@ -1909,43 +1914,45 @@ function Home({ userApproved = false }) {
           </div>
         )}
 
-        {isWashingMachineSelected &&
-          programari &&
-          programari.length > 0 &&
-          createProgramare() != null && (
-            <div className="home__floating-actions">
-              <button className="btn btn-secondary" onClick={renunta}>
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-                Renunță
-              </button>
-              <button
-                className="btn btn-success"
-                onClick={submitWashingMachineBooking}
+        {isWashingMachineSelected && (
+          <div className="home__floating-actions">
+            <button className="btn btn-secondary" onClick={renunta}>
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
               >
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+              Renunță
+            </button>
+
+            {programari &&
+              programari.length > 0 &&
+              createProgramare() != null && (
+                <button
+                  className="btn btn-success"
+                  onClick={submitWashingMachineBooking}
                 >
-                  <polyline points="20,6 9,17 4,12" />
-                </svg>
-                Finalizează programarea
-              </button>
-            </div>
-          )}
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <polyline points="20,6 9,17 4,12" />
+                  </svg>
+                  Finalizează programarea
+                </button>
+              )}
+          </div>
+        )}
 
         {isDryerSelected && (
           <div className="home__floating-actions home__floating-actions--dryer">
@@ -2434,6 +2441,9 @@ function Home({ userApproved = false }) {
           )}
         </div>
       </div>
+      {showCadathonPopup && (
+        <CadathonPopup onClose={() => setShowCadathonPopup(false)} />
+      )}
     </div>
   );
 }
