@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import DatePicker from "react-multi-date-picker";
 import dayjs from "dayjs";
@@ -7,8 +7,30 @@ import { toast_error, toast_success } from "../utils/Toasts";
 import { useSocket } from "../utils/SocketContext";
 import { useAuth } from "../utils/AuthContext";
 import LoadingSpinner from "../components/LoadingSpinner";
+import customParseFormat from "dayjs/plugin/customParseFormat";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
 import "../assets/styles/pages/Admin.scss";
 const BUCURESTI_TZ = "Europe/Bucharest";
+
+dayjs.extend(customParseFormat);
+
+const COLORS = {
+  M1: "#0088FE",     // Blue
+  M2: "#00C49F",     // Green
+  Uscator: "#FFBB28" // Yellow/Orange
+};
 
 // Helper function to calculate duration between two time strings
 const calculateDuration = (startTime, endTime) => {
@@ -156,9 +178,12 @@ function Admin() {
   const [bookings, setBookings] = useState([]);
   const [maintenanceIntervals, setMaintenanceIntervals] = useState([]);
   const [userSearchTerm, setUserSearchTerm] = useState("");
+  const [debouncedUserSearchTerm, setDebouncedUserSearchTerm] = useState("");
   const [bookingSearchTerm, setBookingSearchTerm] = useState("");
+  const [debouncedBookingSearchTerm, setDebouncedBookingSearchTerm] = useState("");
   const [reasons, setReasons] = useState({});
   const [showActiveBookings, setShowActiveBookings] = useState(false);
+  const [sortConfig, setSortConfig] = useState({ key: "date", direction: "desc" });
   const [maintenanceDate, setMaintenanceDate] = useState(dayjs().toDate());
   const [maintenanceMachine, setMaintenanceMachine] = useState("");
   const [maintenanceSlots, setMaintenanceSlots] = useState([]);
@@ -175,10 +200,257 @@ function Admin() {
     users: true,
     settings: true,
     cleanup: true,
-    bookings: false,
-    maintenance: false,
+    stats: true,
   });
 
+  // --- Statistics Logic ---
+
+  // Calculate Date Range
+  const statsPeriod = useMemo(() => {
+    if (!bookings.length) return "";
+
+    let minDate = null;
+    let maxDate = null;
+
+    bookings.forEach(booking => {
+      // EXCLUDE CANCELLED STRATEGY:
+      // Count everything UNLESS it is explicitly cancelled.
+      const isCancelled =
+        booking.active?.cancelledBy ||
+        booking.active?.message?.toLowerCase().includes("anul");
+
+      if (isCancelled) return;
+
+      const dateStr = formatDate(booking.date, null);
+      if (!dateStr) return;
+
+      const d = dayjs(dateStr, "DD/MM/YYYY");
+      if (d.isValid()) {
+        if (!minDate || d.isBefore(minDate)) minDate = d;
+        if (!maxDate || d.isAfter(maxDate)) maxDate = d;
+      }
+    });
+
+    if (!minDate || !maxDate) return "";
+    return `${minDate.format("DD/MM/YYYY")} - ${maxDate.format("DD/MM/YYYY")}`;
+  }, [bookings]);
+
+  const dailyStats = useMemo(() => {
+    // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    // We want to display Mon -> Sun.
+    const stats = [
+      { name: "Lun", dayIndex: 1, M1: 0, M2: 0, Uscator: 0, total: 0 },
+      { name: "Mar", dayIndex: 2, M1: 0, M2: 0, Uscator: 0, total: 0 },
+      { name: "Mie", dayIndex: 3, M1: 0, M2: 0, Uscator: 0, total: 0 },
+      { name: "Joi", dayIndex: 4, M1: 0, M2: 0, Uscator: 0, total: 0 },
+      { name: "Vin", dayIndex: 5, M1: 0, M2: 0, Uscator: 0, total: 0 },
+      { name: "Sam", dayIndex: 6, M1: 0, M2: 0, Uscator: 0, total: 0 },
+      { name: "Dum", dayIndex: 0, M1: 0, M2: 0, Uscator: 0, total: 0 },
+    ];
+
+    bookings.forEach((booking) => {
+      // 1. Must have minimal valid time info
+      if (!booking.start_interval_time || !booking.final_interval_time) return;
+
+      // EXCLUDE CANCELLED STRATEGY:
+      const isCancelled =
+        booking.active?.cancelledBy ||
+        booking.active?.message?.toLowerCase().includes("anul");
+
+      if (isCancelled) return;
+
+      // Use SAFE DATE FORMATTING to match Table
+      const dateStr = formatDate(booking.date, null);
+      if (!dateStr) return;
+
+      const dateObj = dayjs(dateStr, "DD/MM/YYYY");
+      if (!dateObj.isValid()) return;
+
+      const dayIndex = dateObj.day(); // 0-6
+      const statObj = stats.find(s => s.dayIndex === dayIndex);
+
+      if (statObj) {
+        statObj.total += 1;
+        if (booking.machine === "Masina 1" || booking.machine === "M1") statObj.M1 += 1;
+        else if (booking.machine === "Masina 2" || booking.machine === "M2") statObj.M2 += 1;
+        else if (booking.machine === "Uscator" || booking.machine === "Uscător") statObj.Uscator += 1;
+      }
+    });
+
+    return stats;
+  }, [bookings]);
+
+  const topUsers = useMemo(() => {
+    const userStats = {};
+    const now = dayjs(); // Get current time
+
+    bookings.forEach((booking) => {
+      const uid = booking.user?.uid;
+      const name = booking.user?.numeComplet || "Necunoscut";
+
+      if (!uid) return;
+
+      // --- Filter Logic ---
+
+      // (Removed future filter to align with Table/Daily stats)
+
+      // EXCLUDE CANCELLED STRATEGY:
+      const isCancelled =
+        booking.active?.cancelledBy ||
+        booking.active?.message?.toLowerCase().includes("anul");
+
+      if (isCancelled) return;
+      // --------------------
+
+      if (!userStats[uid]) {
+        userStats[uid] = { name, M1: 0, M2: 0, Uscator: 0, totalMinutes: 0 };
+      }
+
+      // Calculate duration
+      let duration = 0;
+      if (booking.duration && typeof booking.duration === 'number') {
+        duration = booking.duration;
+      } else {
+        // calculateDuration returns "N/A" on failure, so we check type
+        const calcArgs = calculateDuration(booking.start_interval_time, booking.final_interval_time);
+        if (typeof calcArgs === 'number') {
+          duration = calcArgs;
+        }
+      }
+
+      userStats[uid].totalMinutes += duration;
+
+      if (booking.machine === "Masina 1" || booking.machine === "M1") userStats[uid].M1 += duration;
+      else if (booking.machine === "Masina 2" || booking.machine === "M2") userStats[uid].M2 += duration;
+      else if (booking.machine === "Uscator" || booking.machine === "Uscător") userStats[uid].Uscator += duration;
+    });
+
+    return Object.values(userStats)
+      .sort((a, b) => b.totalMinutes - a.totalMinutes)
+      .slice(0, 10);
+  }, [bookings]);
+
+  // Filter bookings
+  const currentDate = dayjs().startOf("day");
+
+  // 1. Filter bookings
+  const filteredBookings = useMemo(() => {
+    return bookings.filter((booking) => {
+      // 1. Active Filter
+      if (showActiveBookings) {
+        if (!booking.date) return false;
+        // Logic for "Active" filter in UI:
+        // Usually means future or current.
+        // If we want to show strictly "currently running or future", we check date >= today
+        try {
+          let bookingDate;
+          if (typeof booking.date === "string" && booking.date.includes("T")) {
+            bookingDate = dayjs(booking.date);
+          } else {
+            bookingDate = dayjs(booking.date, "DD/MM/YYYY");
+          }
+          // Check if active status is true AND date is not past
+          // OR if we just rely on the 'active' toggle showing future stuff
+          if (!bookingDate.isValid() || !bookingDate.isSameOrAfter(currentDate)) {
+            return false;
+          }
+        } catch (error) {
+          return false;
+        }
+      }
+
+      // 2. Search Filter
+      if (!debouncedBookingSearchTerm) return true;
+      const term = debouncedBookingSearchTerm.toLowerCase();
+
+      const nume = booking.user?.numeComplet?.toLowerCase() || "";
+      const camera = booking.user?.camera?.toLowerCase() || "";
+      const machine = booking.machine?.toLowerCase() || "";
+      const date = formatDate(booking.date).toLowerCase();
+      const start = booking.start_interval_time?.toLowerCase() || "";
+      const end = booking.final_interval_time?.toLowerCase() || "";
+
+      return (
+        nume.includes(term) ||
+        camera.includes(term) ||
+        machine.includes(term) ||
+        date.includes(term) ||
+        start.includes(term) ||
+        end.includes(term)
+      );
+    });
+  }, [bookings, showActiveBookings, debouncedBookingSearchTerm, currentDate]);
+
+  // 2. Sort bookings
+  const displayedBookings = useMemo(() => {
+    return [...filteredBookings].sort((a, b) => {
+      if (sortConfig.key === "date") {
+        // Parse dates for comparison
+        const getDate = (item) => {
+          if (!item.date) return 0;
+          if (typeof item.date === "string" && item.date.includes("T")) {
+            return dayjs(item.date).valueOf();
+          }
+          return dayjs(item.date, "DD/MM/YYYY").valueOf();
+        };
+
+        const dateA = getDate(a);
+        const dateB = getDate(b);
+
+        if (dateA < dateB) return sortConfig.direction === "asc" ? -1 : 1;
+        if (dateA > dateB) return sortConfig.direction === "asc" ? 1 : -1;
+
+        // Secondary sort by time if dates are equal
+        const timeA = a.start_interval_time || "";
+        const timeB = b.start_interval_time || "";
+        if (timeA < timeB) return sortConfig.direction === "asc" ? -1 : 1;
+        if (timeA > timeB) return sortConfig.direction === "asc" ? 1 : -1;
+
+        return 0;
+      }
+      return 0;
+    });
+  }, [filteredBookings, sortConfig]);
+
+  const filteredUsers = useMemo(() => {
+    return users.filter((adminUser) => {
+      if (!debouncedUserSearchTerm) return true;
+      const searchLower = debouncedUserSearchTerm.toLowerCase();
+      const nume =
+        typeof adminUser.numeComplet === "string"
+          ? adminUser.numeComplet.toLowerCase()
+          : "";
+      const email =
+        typeof (adminUser.google?.email || adminUser.email) === "string"
+          ? (adminUser.google?.email || adminUser.email).toLowerCase()
+          : "";
+      const camera =
+        typeof adminUser.camera === "string"
+          ? adminUser.camera.toLowerCase()
+          : "";
+
+      return (
+        nume.includes(searchLower) ||
+        email.includes(searchLower) ||
+        camera.includes(searchLower)
+      );
+    });
+  }, [users, debouncedUserSearchTerm]);
+
+  // --- Debounce Logic ---
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedBookingSearchTerm(bookingSearchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [bookingSearchTerm]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedUserSearchTerm(userSearchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [userSearchTerm]);
   // Generate time slots for maintenance
   const generateTimeSlots = () => {
     const slots = [];
@@ -250,7 +522,8 @@ function Admin() {
 
   const getBookings = async () => {
     try {
-      const rasp = await AXIOS.get("/api/programare");
+      // Changed: Request includeInactive=true to get history for statistics and search
+      const rasp = await AXIOS.get("/api/programare?includeInactive=true");
       if (rasp.data.success) {
         setBookings(sortByCreatedAtDesc(rasp.data.programari || []));
       }
@@ -605,53 +878,14 @@ function Admin() {
     );
   }
 
-  // Filter bookings for active ones
-  const currentDate = dayjs().startOf("day");
-  const displayedBookings = showActiveBookings
-    ? bookings.filter((booking) => {
-      if (!booking.date) return false;
-      try {
-        // Handle both ISO format and DD/MM/YYYY format
-        let bookingDate;
-        if (typeof booking.date === "string" && booking.date.includes("T")) {
-          // ISO format
-          bookingDate = dayjs(booking.date);
-        } else {
-          // DD/MM/YYYY format
-          bookingDate = dayjs(booking.date, "DD/MM/YYYY");
-        }
-        return (
-          bookingDate.isValid() && bookingDate.isSameOrAfter(currentDate)
-        );
-      } catch (error) {
-        console.warn("Invalid booking date:", booking.date);
-        return false;
-      }
-    })
-    : bookings;
-
-  const filteredUsers = users.filter((adminUser) => {
-    if (!userSearchTerm) return true;
-    const searchLower = userSearchTerm.toLowerCase();
-    const nume =
-      typeof adminUser.numeComplet === "string"
-        ? adminUser.numeComplet.toLowerCase()
-        : "";
-    const email =
-      typeof (adminUser.google?.email || adminUser.email) === "string"
-        ? (adminUser.google?.email || adminUser.email).toLowerCase()
-        : "";
-    const camera =
-      typeof adminUser.camera === "string"
-        ? adminUser.camera.toLowerCase()
-        : "";
-
-    return (
-      nume.includes(searchLower) ||
-      email.includes(searchLower) ||
-      camera.includes(searchLower)
-    );
-  });
+  // Helper function for sorting request
+  const requestSort = (key) => {
+    let direction = "asc";
+    if (sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc";
+    }
+    setSortConfig({ key, direction });
+  };
 
   return (
     <div className="admin">
@@ -783,6 +1017,104 @@ function Admin() {
                     saveSettings("blockPastSlots", !settings.blockPastSlots)
                   }
                 />
+              </div>
+            </div>
+          </div>
+        </div>
+        <br />
+        <br />
+
+        {/* Statistici */}
+        <div className="admin__section admin__section--full-width">
+          <div
+            className="admin__section-header"
+            onClick={() =>
+              setExpandedSections((prev) => ({
+                ...prev,
+                stats: !prev.stats,
+              }))
+            }
+          >
+            <h2>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <line x1="18" y1="20" x2="18" y2="10" />
+                <line x1="12" y1="20" x2="12" y2="4" />
+                <line x1="6" y1="20" x2="6" y2="14" />
+              </svg>
+              Statistici
+              {statsPeriod && <span style={{ fontSize: '0.9rem', fontWeight: 'normal', marginLeft: '10px', opacity: 0.8 }}>({statsPeriod})</span>}
+            </h2>
+            <svg
+              className={`toggle-icon ${expandedSections.stats ? "toggle-icon--expanded" : ""
+                }`}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </div>
+          <div
+            className={`admin__section-content ${!expandedSections.stats
+              ? "admin__section-content--collapsed"
+              : ""
+              }`}
+          >
+            <div className="admin__stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '2rem' }}>
+
+              {/* Chart 1: Daily Usage */}
+              <div className="admin__chart-card" style={{ background: '#fff', border: '1px solid #eee', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                <h3 style={{ marginBottom: '1.5rem', textAlign: 'center', color: '#555' }}>Rezervări pe Zile (Nr. Rezervări)</h3>
+                <div style={{ width: '100%', height: 350 }}>
+                  <ResponsiveContainer>
+                    <BarChart data={dailyStats}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                      <YAxis axisLine={false} tickLine={false} />
+                      <Tooltip
+                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                        cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+                      />
+                      <Legend iconType="circle" />
+                      <Bar dataKey="M1" stackId="a" fill={COLORS.M1} name="Masina 1" radius={[0, 0, 4, 4]} />
+                      <Bar dataKey="M2" stackId="a" fill={COLORS.M2} name="Masina 2" />
+                      <Bar dataKey="Uscator" stackId="a" fill={COLORS.Uscator} name="Uscător" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Chart 2: Top Users */}
+              <div className="admin__chart-card" style={{ background: '#fff', border: '1px solid #eee', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                <h3 style={{ marginBottom: '1.5rem', textAlign: 'center', color: '#555' }}>Top 10 Utilizatori (Minute Totale)</h3>
+                <div style={{ width: '100%', height: 350 }}>
+                  <ResponsiveContainer>
+                    <BarChart
+                      data={topUsers}
+                      layout="vertical"
+                      margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                      <XAxis type="number" hide />
+                      <YAxis
+                        type="category"
+                        dataKey="name"
+                        width={120}
+                        tick={{ fontSize: 13 }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <Tooltip
+                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                        cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+                      />
+                      <Legend iconType="circle" />
+                      <Bar dataKey="M1" stackId="a" fill={COLORS.M1} name="M1 (min)" />
+                      <Bar dataKey="M2" stackId="a" fill={COLORS.M2} name="M2 (min)" />
+                      <Bar dataKey="Uscator" stackId="a" fill={COLORS.Uscator} name="Uscător (min)" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             </div>
           </div>
@@ -1177,7 +1509,7 @@ function Admin() {
             <div className="admin__filters">
               <input
                 type="text"
-                placeholder="Caută după nume..."
+                placeholder="Caută (nume, cameră, mașină, dată...)"
                 value={bookingSearchTerm}
                 onChange={(e) => setBookingSearchTerm(e.target.value)}
               />
@@ -1199,7 +1531,14 @@ function Admin() {
                   <table>
                     <thead>
                       <tr>
-                        <th>Data</th>
+                        <th
+                          onClick={() => requestSort("date")}
+                          style={{ cursor: "pointer", userSelect: "none" }}
+                        >
+                          Data {sortConfig.key === "date" && (
+                            <span>{sortConfig.direction === "asc" ? "↑" : "↓"}</span>
+                          )}
+                        </th>
                         <th>Mașină</th>
                         <th>Oră Început</th>
                         <th>Oră Sfârșit</th>
@@ -1212,14 +1551,6 @@ function Admin() {
                     </thead>
                     <tbody>
                       {displayedBookings
-                        .filter((booking) => {
-                          if (!bookingSearchTerm) return true;
-                          const nume =
-                            typeof booking.user?.numeComplet === "string"
-                              ? booking.user.numeComplet.toLowerCase()
-                              : "";
-                          return nume.includes(bookingSearchTerm.toLowerCase());
-                        })
                         .map((booking) => (
                           <tr key={booking.uid}>
                             <td>{formatDate(booking.date)}</td>

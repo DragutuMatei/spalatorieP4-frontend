@@ -111,7 +111,7 @@ function Home({ userApproved = false }) {
     (machine) => machine.name === selectedMachine
   );
   const dryerEnabled = realStates[DRYER_MACHINE];
-  const todayBucharest = dayjs().tz(BUCURESTI_TZ).startOf("day");
+  const todayBucharest = useMemo(() => dayjs().tz(BUCURESTI_TZ).startOf("day"), []);
 
   const buildHours = useCallback(() => {
     const startHour = dayjs().startOf("day").hour(8);
@@ -636,11 +636,12 @@ function Home({ userApproved = false }) {
       socket.off("userUpdate");
     };
   }, [socket, user]);
+  // Re-fetch only when the formatted date string changes
+  const dateString = useMemo(() => dayjs(value).format("DD/MM/YYYY"), [value]);
+
   useEffect(() => {
-    // Re-fetch when date changes
-    const currentDateFormatted = dayjs(value).format("DD/MM/YYYY");
-    getProgramari(currentDateFormatted);
-  }, [value, getProgramari]);
+    getProgramari(dateString);
+  }, [dateString, getProgramari]);
 
   useEffect(() => {
     return () => {
@@ -1427,6 +1428,9 @@ function Home({ userApproved = false }) {
       return false;
     }
     if (dryerActiveBooking) {
+      if (user?.uid && dryerActiveBooking.user?.uid === user.uid) {
+        return true;
+      }
       return false;
     }
     if (isAnotherUserEditingDryer) {
@@ -1438,6 +1442,7 @@ function Home({ userApproved = false }) {
     dryerMaintenanceActive,
     dryerActiveBooking,
     isAnotherUserEditingDryer,
+    user,
   ]);
 
   const dryerTileStatus = useMemo(() => {
@@ -1535,7 +1540,23 @@ function Home({ userApproved = false }) {
       }
       window.scrollTo(0, 0);
 
-      setValue(todayBucharest.toDate());
+      // Initialize form if editing existing booking
+      if (dryerActiveBooking && dryerActiveBooking.user?.uid === user?.uid) {
+        setDryerDurationHours("");
+        setDryerDurationMinutes("");
+        // Logic to show current duration or remaining? 
+        // Let's show the TOTAL duration so they can extend or shorten it.
+        const totalMinutes = dryerActiveBooking.duration || 0;
+        const h = Math.floor(totalMinutes / 60);
+        const m = totalMinutes % 60;
+        setDryerDurationHours(h.toString());
+        setDryerDurationMinutes(m.toString());
+      } else {
+        setValue(todayBucharest.toDate());
+        setDryerDurationHours("");
+        setDryerDurationMinutes("");
+      }
+
       setSelectedMachine(DRYER_MACHINE);
       setProgramari([]);
       cancelTempReservation();
@@ -1750,6 +1771,55 @@ function Home({ userApproved = false }) {
     }
   };
 
+  const updateDryerBooking = async () => {
+    if (!dryerActiveBooking) return;
+
+    if (dryerDurationTotalMinutes <= 0) {
+      toast_error("Durata trebuie să fie mai mare decât 0 minute.");
+      return;
+    }
+
+    const start = dryerActiveBooking.startsAt;
+    const end = start.add(dryerDurationTotalMinutes, "minute");
+
+    // Basic validation
+    if (!start.isValid() || !end.isValid()) {
+      toast_error("Eroare la calcularea timpului.");
+      return;
+    }
+
+    const payload = {
+      programareId: dryerActiveBooking.uid,
+      updatedData: {
+        endsAt: end.valueOf(), // Update timestamp
+        endTimestamp: end.valueOf(), // Update timestamp
+        final_interval_time: end.format("HH:mm"),
+        duration: dryerDurationTotalMinutes,
+        durationMinutes: dryerDurationTotalMinutes
+      }
+    };
+
+    setDryerSubmitting(true);
+    try {
+      const rasp = await AXIOS.put(`/api/programare/${dryerActiveBooking.uid}`, payload);
+
+      if (rasp.data.success) {
+        toast_success("Rezervarea a fost actualizată!");
+        setSelectedMachine("");
+        setDryerDurationHours("");
+        setDryerDurationMinutes("");
+        setDryerStatusTick(Date.now());
+      } else {
+        toast_error(rasp.data.message || "Eroare la actualizare.");
+      }
+    } catch (error) {
+      console.error("Update error", error);
+      toast_error("Eroare la actualizarea rezervării.");
+    } finally {
+      setDryerSubmitting(false);
+    }
+  };
+
   const renunta = () => {
     setHours((old) => {
       const newHours = [...old];
@@ -1896,23 +1966,47 @@ function Home({ userApproved = false }) {
               </svg>
               Renunță
             </button>
-            <button
-              className="btn btn-success"
-              onClick={submitDryerBooking}
-              disabled={!canSubmitDryer}
-            >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
+
+            {/* Show UPDATE button if editing existing booking, otherwise CREATE button */}
+            {dryerActiveBooking && dryerActiveBooking.user?.uid === user?.uid ? (
+              <button
+                className="btn btn-primary"
+                onClick={updateDryerBooking}
+                disabled={dryerSubmitting || !!dryerDurationError || dryerDurationTotalMinutes === (dryerActiveBooking?.duration || 0)}
               >
-                <polyline points="20,6 9,17 4,12" />
-              </svg>
-              {dryerActionLabel}
-            </button>
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                  <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                  <polyline points="7 3 7 8 15 8"></polyline>
+                </svg>
+                Actualizează timpul
+              </button>
+            ) : (
+              <button
+                className="btn btn-success"
+                onClick={submitDryerBooking}
+                disabled={!canSubmitDryer}
+              >
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <polyline points="20,6 9,17 4,12" />
+                </svg>
+                {dryerActionLabel}
+              </button>
+            )}
           </div>
         )}
 
@@ -1951,7 +2045,11 @@ function Home({ userApproved = false }) {
 
           {isDryerSelected && (
             <div className="home__booking-summary">
-              <h2>Rezervarea uscătorului</h2>
+              <h2>
+                {dryerActiveBooking && dryerActiveBooking.user?.uid === user?.uid
+                  ? "Modificare rezervare uscător"
+                  : "Rezervarea uscătorului"}
+              </h2>
               <div className="home__booking-summary__details">
                 <div className="home__booking-summary__detail">
                   <strong>Uscător</strong>
@@ -1988,19 +2086,25 @@ function Home({ userApproved = false }) {
                 </div>
                 <div className="home__booking-summary__detail">
                   <strong>
-                    {dryerDraftTiming.start
-                      ? dryerDraftTiming.start.format("DD/MM/YYYY HH:mm")
-                      : "--"}
+                    {dryerActiveBooking && dryerActiveBooking.user?.uid === user?.uid
+                      ? dryerActiveBooking.start_interval_time
+                      : dryerDraftTiming.start
+                        ? dryerDraftTiming.start.format("DD/MM/YYYY HH:mm")
+                        : "--"}
                   </strong>
-                  <span>Start automat</span>
+                  <span>Start</span>
                 </div>
                 <div className="home__booking-summary__detail">
                   <strong>
-                    {dryerDraftTiming.end
-                      ? dryerDraftTiming.end.format("DD/MM/YYYY HH:mm")
-                      : "--"}
+                    {dryerActiveBooking && dryerActiveBooking.user?.uid === user?.uid
+                      ? dryerActiveBooking.startsAt
+                        .add(dryerDurationTotalMinutes, "minute")
+                        .format("HH:mm")
+                      : dryerDraftTiming.end
+                        ? dryerDraftTiming.end.format("DD/MM/YYYY HH:mm")
+                        : "--"}
                   </strong>
-                  <span>Final estimat</span>
+                  <span>Final {dryerActiveBooking ? "(Actualizat)" : "Estimat"}</span>
                 </div>
                 <div className="home__booking-summary__detail">
                   <strong>
@@ -2023,7 +2127,7 @@ function Home({ userApproved = false }) {
                           : "Stare actuală"}
                   </span>
                 </div>
-                {dryerActiveBooking && (
+                {dryerActiveBooking && dryerActiveBooking.user?.uid !== user?.uid && (
                   <div className="home__booking-summary__detail">
                     <strong>
                       {dryerOccupantName}
