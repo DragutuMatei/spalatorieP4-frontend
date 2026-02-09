@@ -214,6 +214,21 @@
         }
       }
 
+      &--occupied {
+        border-color: #EF4444 !important;
+        background-color: rgba(239, 68, 68, 0.1) !important;
+        color: #EF4444 !important;
+
+        .home__machine-selector__status {
+          color: #EF4444 !important;
+          font-weight: 600;
+        }
+
+        &:hover {
+          background-color: rgba(239, 68, 68, 0.15) !important;
+        }
+      }
+
       &__name {
         font-weight: 600;
         margin-bottom: $spacing-xs;

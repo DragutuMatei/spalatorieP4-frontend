@@ -2203,15 +2203,33 @@ function Home({ userApproved = false }) {
                   {[...washingMachines, { id: "uscator", name: DRYER_MACHINE }].map(
                     (m) => {
                       const isDryer = m.name === DRYER_MACHINE;
-                      const machineEnabled = isDryer
-                        ? dryerSelectable
-                        : Boolean(realStates[m.name]);
-                      const machineStatus = isDryer
-                        ? dryerTileStatus
-                        : machineEnabled
-                          ? "Disponibil"
-                          : "Indisponibil";
-                      const isDisabled = !machineEnabled;
+                      let machineStatus = "Indisponibil";
+                      let isDisabled = false;
+                      let isOccupiedByOther = false;
+
+                      if (isDryer) {
+                        machineStatus = dryerTileStatus;
+                        // Use !dryerSelectable logic, but specifically check if it's because it's occupied by someone else
+                        if (dryerActiveBooking) {
+                          if (!user || dryerActiveBooking.user?.uid !== user.uid) {
+                            isOccupiedByOther = true;
+                          }
+                        } else if (isAnotherUserEditingDryer) {
+                          isOccupiedByOther = true;
+                        }
+
+                        isDisabled = !dryerSelectable && !dryerActiveBooking;
+                        if (!dryerEnabled) isDisabled = true;
+                      } else {
+                        const machineEnabled = Boolean(realStates[m.name]);
+                        isDisabled = !machineEnabled;
+
+                        if (!machineEnabled) {
+                          machineStatus = "Indisponibil";
+                        } else {
+                          machineStatus = "Disponibil";
+                        }
+                      }
 
                       return (
                         <div
@@ -2221,6 +2239,9 @@ function Home({ userApproved = false }) {
                             : ""
                             } ${isDisabled
                               ? "home__machine-selector__option--disabled"
+                              : ""
+                            } ${isOccupiedByOther
+                              ? "home__machine-selector__option--occupied"
                               : ""
                             }`}
                           onClick={() => {
