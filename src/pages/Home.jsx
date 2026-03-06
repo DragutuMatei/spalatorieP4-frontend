@@ -216,7 +216,8 @@ function Home({ userApproved = false }) {
     const currentDate = dayjs(value).format("DD/MM/YYYY");
 
     maintenanceIntervals.forEach((interval) => {
-      if (interval.date === currentDate) {
+      const datesList = interval.dates && interval.dates.length > 0 ? interval.dates : [interval.date];
+      if (datesList.includes(currentDate)) {
         // Găsim sloturile de timp pentru intervalul de mentenanță
         const startTime = interval.startTime;
         const endTime = interval.endTime;
@@ -1011,18 +1012,21 @@ function Home({ userApproved = false }) {
 
     return maintenanceIntervals
       .filter((interval) => interval.machine === DRYER_MACHINE)
-      .map((interval) => {
+      .flatMap((interval) => {
+        const datesList = interval.dates && interval.dates.length > 0 ? interval.dates : [interval.date];
         const startTime = interval.startTime || interval.start_interval_time;
         const endTime = interval.endTime || interval.final_interval_time;
-        return {
+
+        return datesList.map((d) => ({
           ...interval,
+          date: d,
           intervalStart: startTime
-            ? toBucharestDayjs(`${interval.date} ${startTime}`)
+            ? toBucharestDayjs(`${d} ${startTime}`)
             : dayjs(NaN),
           intervalEnd: endTime
-            ? toBucharestDayjs(`${interval.date} ${endTime}`)
+            ? toBucharestDayjs(`${d} ${endTime}`)
             : dayjs(NaN),
-        };
+        }));
       })
       .filter(
         (interval) => interval.intervalStart.isValid() && interval.intervalEnd.isValid()
@@ -1409,19 +1413,22 @@ function Home({ userApproved = false }) {
         return false;
       }
 
-      const intervalDate = toBucharestDayjs(interval.date);
-      if (!intervalDate.isValid() || !nowBucharest.isSame(intervalDate, "day")) {
+      const datesList = interval.dates && interval.dates.length > 0 ? interval.dates : [interval.date];
+      const todayFormatted = nowBucharest.format("DD/MM/YYYY");
+
+      if (!datesList.includes(todayFormatted)) {
         return false;
       }
 
+      const activeDateStr = todayFormatted;
       const startTime = interval.startTime || interval.start_interval_time;
       const endTime = interval.endTime || interval.final_interval_time;
 
       const startDayjs = startTime
-        ? toBucharestDayjs(`${interval.date} ${startTime}`)
+        ? toBucharestDayjs(`${activeDateStr} ${startTime}`)
         : dayjs(NaN);
       const endDayjs = endTime
-        ? toBucharestDayjs(`${interval.date} ${endTime}`)
+        ? toBucharestDayjs(`${activeDateStr} ${endTime}`)
         : dayjs(NaN);
 
       if (!startDayjs.isValid() || !endDayjs.isValid()) {

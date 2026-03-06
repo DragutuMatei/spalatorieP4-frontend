@@ -9,6 +9,7 @@ import { useAuth } from "../utils/AuthContext";
 import LoadingSpinner from "../components/LoadingSpinner";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
+import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 
 import {
   BarChart,
@@ -28,6 +29,7 @@ const BUCURESTI_TZ = "Europe/Bucharest";
 
 dayjs.extend(customParseFormat);
 dayjs.extend(isSameOrAfter);
+dayjs.extend(isSameOrBefore);
 
 const COLORS = {
   M1: "#0088FE",     // Blue
@@ -188,7 +190,8 @@ function Admin() {
   const [showActiveBookings, setShowActiveBookings] = useState(false);
   const [showGroupedBookings, setShowGroupedBookings] = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: "date", direction: "desc" });
-  const [maintenanceDate, setMaintenanceDate] = useState(dayjs().toDate());
+  const [maintenanceStartDate, setMaintenanceStartDate] = useState(dayjs().toDate());
+  const [maintenanceEndDate, setMaintenanceEndDate] = useState(null);
   const [maintenanceMachine, setMaintenanceMachine] = useState("");
   const [maintenanceSlots, setMaintenanceSlots] = useState([]);
   const [savingSetting, setSavingSetting] = useState(null);
@@ -996,11 +999,37 @@ function Admin() {
 
     setMaintenanceSubmitting(true);
     try {
-      const dateToSend = dayjs(maintenanceDate).format("DD/MM/YYYY");
+      const formattedDates = [];
+
+      if (maintenanceEndDate) {
+        // Build all dates in between
+
+        // react-multi-date-picker returns custom DateObjects. We should map them safely:
+        const startRaw = maintenanceStartDate?.toDate ? maintenanceStartDate.toDate() : maintenanceStartDate;
+        const endRaw = maintenanceEndDate?.toDate ? maintenanceEndDate.toDate() : maintenanceEndDate;
+
+        let currDate = dayjs(startRaw).startOf('day');
+        const endDate = dayjs(endRaw).startOf('day');
+
+        while (currDate.isSameOrBefore(endDate)) {
+          formattedDates.push(currDate.format("DD/MM/YYYY"));
+          currDate = currDate.add(1, 'day');
+        }
+      } else if (maintenanceStartDate) {
+        const singleRaw = maintenanceStartDate?.toDate ? maintenanceStartDate.toDate() : maintenanceStartDate;
+        formattedDates.push(dayjs(singleRaw).format("DD/MM/YYYY"));
+      }
+
+      if (formattedDates.length === 0) {
+        toast_error("Te rugăm să selectezi o dată validă!");
+        setMaintenanceSubmitting(false);
+        return;
+      }
 
       const rasp = await AXIOS.post("/api/maintenance", {
         machine: maintenanceMachine,
-        date: dateToSend,
+        date: formattedDates[0], // Keep for backward compatibility
+        dates: formattedDates,
         startTime: maintenanceSlots[0],
         endTime: maintenanceSlots[maintenanceSlots.length - 1],
         slots: maintenanceSlots,
@@ -1010,6 +1039,8 @@ function Admin() {
         toast_success("Interval de mentenanță adăugat și rezervările anulate!");
         setMaintenanceMachine("");
         setMaintenanceSlots([]);
+        setMaintenanceStartDate(dayjs().toDate());
+        setMaintenanceEndDate(null);
         getMaintenanceIntervals();
         getBookings();
       }
@@ -1047,7 +1078,9 @@ function Admin() {
     if (maintenanceSlots.includes(slot)) {
       setMaintenanceSlots(maintenanceSlots.filter((s) => s !== slot));
     } else {
-      const dateStr = dayjs(maintenanceDate).format("YYYY-MM-DD");
+      let baseDate = maintenanceStartDate;
+      baseDate = baseDate?.toDate ? baseDate.toDate() : baseDate;
+      const dateStr = dayjs(baseDate).format("YYYY-MM-DD");
       const newSlots = [...maintenanceSlots, slot].sort(
         (a, b) =>
           dayjs(`${dateStr} ${a}`).toDate().getTime() -
@@ -1138,10 +1171,12 @@ function Admin() {
 
       const handleMaintenanceUpdate = (data) => {
         if (data.action === "create") {
-          setMaintenanceIntervals((prev) => [
-            data.maintenanceInterval,
-            ...prev,
-          ]);
+          setMaintenanceIntervals((prev) => {
+            if (prev.some((m) => m.uid === data.maintenanceInterval.uid)) {
+              return prev; // already added, skip
+            }
+            return [data.maintenanceInterval, ...prev];
+          });
         } else if (data.action === "delete") {
           setMaintenanceIntervals((prev) =>
             prev.filter((m) => m.uid !== data.maintenanceId)
@@ -1525,12 +1560,33 @@ function Admin() {
               <h3>Adaugă interval mentenanță</h3>
               <div className="admin__maintenance-form-row">
                 <div className="form-group">
-                  <label>Data</label>
+                  <label>Data start</label>
                   <DatePicker
-                    value={maintenanceDate}
-                    onChange={setMaintenanceDate}
+                    value={maintenanceStartDate}
+                    onChange={setMaintenanceStartDate}
                     format="DD/MM/YYYY"
-                    minDate={new Date()}
+                    minDate={dayjs().startOf("day").toDate()}
+                    style={{
+                      backgroundColor: "white",
+                      border: "1px solid #ddd",
+                      borderRadius: "4px",
+                      padding: "8px 12px",
+                      width: "100%",
+                    }}
+                    inputClass="date-picker-input"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Data sfârșit (Opțional)</label>
+                  <DatePicker
+                    value={maintenanceEndDate}
+                    onChange={setMaintenanceEndDate}
+                    format="DD/MM/YYYY"
+                    minDate={
+                      maintenanceStartDate
+                        ? dayjs(maintenanceStartDate?.toDate ? maintenanceStartDate.toDate() : maintenanceStartDate).startOf('day').toDate()
+                        : dayjs().startOf('day').toDate()
+                    }
                     style={{
                       backgroundColor: "white",
                       border: "1px solid #ddd",
@@ -1553,6 +1609,27 @@ function Admin() {
                     <option value="Uscator">Uscător</option>
                   </select>
                 </div>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px", marginTop: "15px" }}>
+                <span style={{ fontWeight: 500 }}>Alege intervalul:</span>
+                <button
+                  type="button"
+                  className="btn"
+                  style={{ backgroundColor: "#6c757d", color: "white", padding: "6px 12px", fontSize: "0.9rem", borderRadius: "4px", border: "none" }}
+                  onClick={() => {
+                    const allSlots = generateTimeSlots();
+                    if (maintenanceSlots.length === allSlots.length) {
+                      setMaintenanceSlots([]);
+                    } else {
+                      setMaintenanceSlots(allSlots);
+                    }
+                  }}
+                >
+                  {maintenanceSlots.length === generateTimeSlots().length
+                    ? "Deselectează toată ziua"
+                    : "Selectează toată ziua"}
+                </button>
               </div>
 
               <div className="time-slots-grid">
@@ -1608,7 +1685,11 @@ function Admin() {
                     <tbody>
                       {maintenanceIntervals.map((interval) => (
                         <tr key={interval.uid}>
-                          <td>{safeRender(interval.date)}</td>
+                          <td>
+                            {interval.dates && interval.dates.length > 1
+                              ? `${safeRender(interval.dates[0])} - ${safeRender(interval.dates[interval.dates.length - 1])}`
+                              : safeRender(interval.date)}
+                          </td>
                           <td>{safeRender(interval.machine)}</td>
                           <td>
                             {safeRender(interval.startTime)} -{" "}
