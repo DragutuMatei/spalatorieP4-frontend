@@ -2479,9 +2479,9 @@ function Home({ userApproved = false }) {
           )}
         </div>
       </div>
-      {showCadathonPopup && (
+      {/* {showCadathonPopup && (
         <CadathonPopup onClose={() => setShowCadathonPopup(false)} />
-      )}
+      )} */}
     </div>
   );
 }
