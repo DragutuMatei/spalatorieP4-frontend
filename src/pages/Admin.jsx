@@ -13,13 +13,6 @@ import customParseFormat from "dayjs/plugin/customParseFormat";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 
-dayjs.extend(customParseFormat);
-dayjs.extend(utc);
-dayjs.extend(timezone);
-dayjs.extend(isSameOrAfter);
-dayjs.extend(isSameOrBefore);
-dayjs.tz.setDefault("Europe/Bucharest");
-
 import {
   BarChart,
   Bar,
@@ -35,6 +28,15 @@ import {
 } from "recharts";
 import "../assets/styles/pages/Admin.scss";
 const BUCURESTI_TZ = "Europe/Bucharest";
+
+
+dayjs.extend(customParseFormat);
+dayjs.extend(utc);
+dayjs.extend(timezone);
+dayjs.extend(isSameOrAfter);
+dayjs.extend(isSameOrBefore);
+dayjs.tz.setDefault("Europe/Bucharest");
+
 
 dayjs.extend(customParseFormat);
 dayjs.extend(isSameOrAfter);
