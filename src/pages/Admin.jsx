@@ -2,6 +2,8 @@ import React, { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import DatePicker from "react-multi-date-picker";
 import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 import AXIOS from "../utils/Axios_config";
 import { toast_error, toast_success } from "../utils/Toasts";
 import { useSocket } from "../utils/SocketContext";
@@ -10,6 +12,13 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
+
+dayjs.extend(customParseFormat);
+dayjs.extend(utc);
+dayjs.extend(timezone);
+dayjs.extend(isSameOrAfter);
+dayjs.extend(isSameOrBefore);
+dayjs.tz.setDefault("Europe/Bucharest");
 
 import {
   BarChart,
@@ -63,7 +72,7 @@ const formatDate = (dateValue, fallback = "N/A") => {
   try {
     // Check if it's an ISO string
     if (typeof dateValue === "string" && dateValue.includes("T")) {
-      return dayjs(dateValue).format("DD/MM/YYYY");
+      return dayjs(dateValue).tz().format("DD/MM/YYYY");
     }
 
     // Check if it's already in DD/MM/YYYY format
@@ -190,7 +199,7 @@ function Admin() {
   const [showActiveBookings, setShowActiveBookings] = useState(false);
   const [showGroupedBookings, setShowGroupedBookings] = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: "date", direction: "desc" });
-  const [maintenanceStartDate, setMaintenanceStartDate] = useState(dayjs().toDate());
+  const [maintenanceStartDate, setMaintenanceStartDate] = useState(dayjs().tz().toDate());
   const [maintenanceEndDate, setMaintenanceEndDate] = useState(null);
   const [maintenanceMachine, setMaintenanceMachine] = useState("");
   const [maintenanceSlots, setMaintenanceSlots] = useState([]);
@@ -307,7 +316,7 @@ function Admin() {
 
   const topUsers = useMemo(() => {
     const userStats = {};
-    const now = dayjs(); // Get current time
+    const now = dayjs().tz(); // Get current time in Bucharest
 
     bookings.forEach((booking) => {
       const uid = booking.user?.uid;
@@ -356,7 +365,7 @@ function Admin() {
   }, [bookings]);
 
   // Filter bookings
-  const currentDate = dayjs().startOf("day");
+  const currentDate = dayjs().tz().startOf("day");
 
   // 1. Filter bookings
   const filteredBookings = useMemo(() => {
@@ -585,7 +594,7 @@ function Admin() {
   // Generate time slots for maintenance
   const generateTimeSlots = () => {
     const slots = [];
-    let time = dayjs().startOf("day").hour(8);
+    let time = dayjs().tz().startOf("day").hour(8);
     while (time.hour() <= 22) {
       slots.push(time.format("HH:mm"));
       time = time.add(30, "minute");
