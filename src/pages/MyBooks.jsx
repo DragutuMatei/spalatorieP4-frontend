@@ -13,6 +13,7 @@ import "../assets/styles/pages/MyBooks.scss";
 dayjs.extend(customParseFormat);
 dayjs.extend(utc);
 dayjs.extend(timezone);
+dayjs.tz.setDefault("Europe/Bucharest");
 dayjs.locale("ro");
 
 const BUCURESTI_TZ = "Europe/Bucharest";

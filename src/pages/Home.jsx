@@ -19,6 +19,7 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.extend(customParseFormat);
 dayjs.extend(isBetween);
+dayjs.tz.setDefault("Europe/Bucharest");
 dayjs.locale("ro");
 
 const BUCURESTI_TZ = "Europe/Bucharest";
@@ -64,7 +65,7 @@ const toBucharestDayjs = (value) => {
 };
 
 function Home({ userApproved = false }) {
-  const [value, setValue] = useState(dayjs().toDate());
+  const [value, setValue] = useState(dayjs().tz().toDate());
   const [showCadathonPopup, setShowCadathonPopup] = useState(false);
   const [loading, setLoading] = useState(false);
   const [hours, setHours] = useState([]);
@@ -105,8 +106,8 @@ function Home({ userApproved = false }) {
   );
 
   const timeZone = BUCURESTI_TZ;
-  const now = dayjs().tz(timeZone);
-  const selectedDate = dayjs(value).tz(timeZone);
+  const now = dayjs().tz();
+  const selectedDate = dayjs(value).tz();
   const isSelectedDateToday = selectedDate.isSame(now, "day");
   const isDryerSelected = selectedMachine === DRYER_MACHINE;
   const isWashingMachineSelected = washingMachines.some(
@@ -116,8 +117,8 @@ function Home({ userApproved = false }) {
   const todayBucharest = useMemo(() => dayjs().tz(BUCURESTI_TZ).startOf("day"), []);
 
   const buildHours = useCallback(() => {
-    const startHour = dayjs().startOf("day").hour(8);
-    const endHour = dayjs().startOf("day").hour(22);
+    const startHour = dayjs(value).tz().startOf("day").hour(8);
+    const endHour = dayjs(value).tz().startOf("day").hour(22);
 
     let hoursArray = [];
     let i = 0;
@@ -164,8 +165,8 @@ function Home({ userApproved = false }) {
       if (pr.active?.status) {
         const dateToCheck = value;
         if (
-          dayjs(pr.date).format("DD/MM/YYYY").toString() ===
-          dayjs(dateToCheck).format("DD/MM/YYYY").toString()
+          toBucharestDayjs(pr.date).format("DD/MM/YYYY") ===
+          toBucharestDayjs(dateToCheck).format("DD/MM/YYYY")
         ) {
           const st = hoursArray.findIndex(
             (h) => h.start_interval_time === pr.start_interval_time
@@ -1667,7 +1668,7 @@ function Home({ userApproved = false }) {
     const programareToSend = {
       createdAt: dayjs().valueOf(),
       active: { status: true, message: "Programare nouă" },
-      date: dayjs(value).tz(BUCURESTI_TZ),
+      date: dayjs(value).tz().format("DD/MM/YYYY"),
       start_interval_time: start_h,
       final_interval_time: final_h,
       machine: selectedMachine,
