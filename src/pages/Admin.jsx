@@ -225,6 +225,7 @@ function Admin() {
   const [selectedBookings, setSelectedBookings] = useState(new Set());
   const [lastSelectedId, setLastSelectedId] = useState(null);
   const [bulkActionReason, setBulkActionReason] = useState("");
+  const [expandedBookingId, setExpandedBookingId] = useState(null);
 
   // Deselect on Escape key
   useEffect(() => {
@@ -2020,18 +2021,22 @@ function Admin() {
                       {groupedBookings
                         .map((booking) => {
                           const isCancelled = booking.active?.cancelledBy || booking.active?.status === false;
+                          const isExpanded = expandedBookingId === booking.uid;
                           return (
-                            <tr key={booking.uid} style={{ opacity: isCancelled ? 0.6 : 1, backgroundColor: isCancelled ? '#fff0f0' : 'inherit' }}>
-                              <td>
+                            <React.Fragment key={booking.uid}>
+                            <tr
+                              style={{ opacity: isCancelled ? 0.6 : 1, backgroundColor: isCancelled ? '#fff0f0' : isExpanded ? 'var(--bg-tertiary)' : 'inherit', cursor: 'pointer' }}
+                              onClick={() => setExpandedBookingId(isExpanded ? null : booking.uid)}
+                            >
+                              <td onClick={(e) => e.stopPropagation()}>
                                 <input
                                   type="checkbox"
                                   checked={selectedBookings.has(booking.uid)}
                                   onChange={(e) => {
-                                    // Prevent row click propagation if we add row click handler later
                                     e.stopPropagation();
                                   }}
                                   onClick={(e) => {
-                                    // Handle shift click
+                                    e.stopPropagation();
                                     toggleSelection(booking.uid, e.shiftKey);
                                   }}
                                 />
@@ -2050,7 +2055,7 @@ function Admin() {
                               </td>
                               <td>{safeRender(booking.user?.numeComplet)}</td>
                               <td>{safeRender(booking.user?.camera)}</td>
-                              <td>
+                              <td onClick={(e) => e.stopPropagation()}>
                                 <input
                                   type="text"
                                   value={reasons[booking.uid] || ""}
@@ -2063,7 +2068,7 @@ function Admin() {
                                   placeholder="Motiv anulare..."
                                 />
                               </td>
-                              <td>
+                              <td onClick={(e) => e.stopPropagation()}>
                                 <div style={{ display: 'flex', gap: '5px' }}>
                                   <button
                                     className="btn btn-warning"
@@ -2085,8 +2090,6 @@ function Admin() {
                                   <button
                                     className="btn btn-danger"
                                     onClick={() => {
-                                      // Smart delete: detect active block 
-                                      // Use originalIds if grouped, otherwise find smart block
                                       const blockIds = booking.originalIds || findContiguousBlockIds(booking, displayedBookings);
                                       permanentlyDeleteBooking(blockIds);
                                     }}
@@ -2102,6 +2105,80 @@ function Admin() {
                                 </div>
                               </td>
                             </tr>
+                            {isExpanded && (
+                              <tr className="booking-detail-row">
+                                <td colSpan="10" style={{ padding: 0 }}>
+                                  <div className="booking-detail-panel">
+                                    <div className="booking-detail-panel__header">
+                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
+                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                        <circle cx="12" cy="7" r="4" />
+                                      </svg>
+                                      Detalii Utilizator
+                                    </div>
+                                    <div className="booking-detail-panel__grid">
+                                      <div className="booking-detail-panel__item">
+                                        <span className="booking-detail-panel__label">Nume complet</span>
+                                        <span className="booking-detail-panel__value">{safeRender(booking.user?.numeComplet)}</span>
+                                      </div>
+                                      <div className="booking-detail-panel__item">
+                                        <span className="booking-detail-panel__label">Email</span>
+                                        <span className="booking-detail-panel__value">
+                                          {booking.user?.email ? (
+                                            <a href={`mailto:${booking.user.email}`} style={{ color: 'var(--primary-blue)', textDecoration: 'none' }}>
+                                              {booking.user.email}
+                                            </a>
+                                          ) : safeRender(booking.user?.google?.email || booking.user?.email)}
+                                        </span>
+                                      </div>
+                                      <div className="booking-detail-panel__item">
+                                        <span className="booking-detail-panel__label">Telefon</span>
+                                        <span className="booking-detail-panel__value">
+                                          {booking.user?.telefon ? (
+                                            <a href={`tel:${booking.user.telefon}`} style={{ color: 'var(--primary-blue)', textDecoration: 'none' }}>
+                                              {booking.user.telefon}
+                                            </a>
+                                          ) : 'N/A'}
+                                        </span>
+                                      </div>
+                                      <div className="booking-detail-panel__item">
+                                        <span className="booking-detail-panel__label">Cameră</span>
+                                        <span className="booking-detail-panel__value">{safeRender(booking.user?.camera)}</span>
+                                      </div>
+                                      <div className="booking-detail-panel__item">
+                                        <span className="booking-detail-panel__label">UID Utilizator</span>
+                                        <span className="booking-detail-panel__value booking-detail-panel__value--mono">{safeRender(booking.user?.uid)}</span>
+                                      </div>
+                                      <div className="booking-detail-panel__item">
+                                        <span className="booking-detail-panel__label">Status rezervare</span>
+                                        <span className="booking-detail-panel__value">
+                                          {isCancelled ? (
+                                            <span style={{ color: 'var(--error)', fontWeight: 600 }}>
+                                              ✕ Anulat {booking.active?.cancelledBy ? `de ${booking.active.cancelledBy}` : ''}
+                                            </span>
+                                          ) : (
+                                            <span style={{ color: 'var(--success)', fontWeight: 600 }}>✓ Activă</span>
+                                          )}
+                                        </span>
+                                      </div>
+                                      {booking.active?.message && (
+                                        <div className="booking-detail-panel__item" style={{ gridColumn: '1 / -1' }}>
+                                          <span className="booking-detail-panel__label">Mesaj / Motiv</span>
+                                          <span className="booking-detail-panel__value" style={{ color: isCancelled ? 'var(--error)' : 'inherit' }}>
+                                            {booking.active.message}
+                                          </span>
+                                        </div>
+                                      )}
+                                      <div className="booking-detail-panel__item">
+                                        <span className="booking-detail-panel__label">ID Rezervare</span>
+                                        <span className="booking-detail-panel__value booking-detail-panel__value--mono">{safeRender(booking.uid)}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                            </React.Fragment>
                           );
                         })}
                     </tbody>

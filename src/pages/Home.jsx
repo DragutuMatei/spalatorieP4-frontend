@@ -12,7 +12,7 @@ import { toast_error, toast_success, toast_warn } from "../utils/Toasts";
 import AXIOS from "../utils/Axios_config";
 import { useSocket } from "../utils/SocketContext";
 import LoadingSpinner from "../components/LoadingSpinner";
-import CadathonPopup from "../components/CadathonPopup";
+import LevelUpPopup from "../components/CadathonPopup";
 
 import "./Home.scss";
 dayjs.extend(utc);
@@ -278,7 +278,7 @@ function Home({ userApproved = false }) {
       return (
         usersProgramari.find((booking) => {
           if (!booking || booking.machine !== machineName) return false;
-          const bookingDateStr = dayjs(booking.date).format("DD/MM/YYYY");
+          const bookingDateStr = toBucharestDayjs(booking.date).format("DD/MM/YYYY");
           if (bookingDateStr !== currentDateStr) return false;
 
           const bookingStart = parseTimeToMinutes(booking.start_interval_time);
@@ -2480,9 +2480,9 @@ function Home({ userApproved = false }) {
           )}
         </div>
       </div>
-      {/* {showCadathonPopup && (
-        <CadathonPopup onClose={() => setShowCadathonPopup(false)} />
-      )} */}
+      {showCadathonPopup && (
+        <LevelUpPopup onClose={() => setShowCadathonPopup(false)} />
+      )}
     </div>
   );
 }
