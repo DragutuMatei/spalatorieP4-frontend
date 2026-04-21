@@ -92,6 +92,23 @@ function Home({ userApproved = false }) {
   const dryerSelectionEmitRef = useRef(null);
   const [liveDryerSelection, setLiveDryerSelection] = useState(null);
   const [isUserApproved, setIsUserApproved] = useState(Boolean(userApproved));
+  const [lastDryerUser, setLastDryerUser] = useState(null);
+
+  useEffect(() => {
+    if (selectedMachine === "Uscator") {
+      AXIOS.get("/api/programare/uscator/last")
+        .then((res) => {
+          if (res.data.success && res.data.booking) {
+            setLastDryerUser(res.data.booking.user);
+          } else {
+            setLastDryerUser(null);
+          }
+        })
+        .catch((err) => console.error("Error fetching last dryer user:", err));
+    } else {
+      setLastDryerUser(null);
+    }
+  }, [selectedMachine]);
 
   useEffect(() => {
     setIsUserApproved(Boolean(userApproved));
@@ -854,8 +871,35 @@ function Home({ userApproved = false }) {
       return;
     }
 
+    const checkBookingLimit = (additionalIntervals) => {
+      if (user?.role === "admin") return true;
+      let existingIntervals = 0;
+      usersProgramari.forEach((booking) => {
+        if (
+          booking.user?.uid === user.uid &&
+          booking.machine === machine &&
+          booking.active?.status === true
+        ) {
+          const bookingStart = parseTimeToMinutes(booking.start_interval_time);
+          const bookingEnd = parseTimeToMinutes(booking.final_interval_time);
+          existingIntervals += (bookingEnd - bookingStart) / 30;
+        }
+      });
+      if (existingIntervals + programari.length + additionalIntervals > 4) {
+        toast_error(
+          "Ai atins limita de 2 ore (4 intervale) pe zi pentru această mașină."
+        );
+        return false;
+      }
+      return true;
+    };
+
     setSelectedMachine(machine);
     if (programari.length === 0) {
+      if (!checkBookingLimit(1)) {
+        setSelectedMachine("");
+        return;
+      }
       setProgramari([{ ...infos }]);
     } else {
       const existingIndex = programari.findIndex(
@@ -892,6 +936,8 @@ function Home({ userApproved = false }) {
         changeStatus(hour_index, machine, STATUS[machine].DISPONIBIL.status);
         return;
       } else {
+        if (!checkBookingLimit(1)) return;
+
         const consecutiveIndex = programari.findIndex(
           (p) =>
             p.start_interval_time === infos.final_interval_time ||
@@ -2076,6 +2122,13 @@ function Home({ userApproved = false }) {
                   : "Rezervarea uscătorului"}
               </h2>
               <div className="home__booking-summary__details">
+                {lastDryerUser && (
+                  <div className="home__booking-summary__detail" style={{ width: '100%', marginBottom: '10px' }}>
+                    <strong>{lastDryerUser.numeComplet} (cam. {lastDryerUser.camera})</strong>
+                    <strong>{lastDryerUser.telefon}  </strong>
+                    <span>Ultima utilizare</span>
+                  </div>
+                )}
                 <div className="home__booking-summary__detail">
                   <strong>Uscător</strong>
                   <span>Echipament selectat</span>
@@ -2198,7 +2251,9 @@ function Home({ userApproved = false }) {
                   maxDate={
                     isDryerSelected
                       ? todayBucharest.endOf("day").toDate()
-                      : dayjs().add(3, "weeks").toDate()
+                      : user?.role === "admin"
+                        ? undefined
+                        : dayjs().add(4, "weeks").toDate()
                   }
                 />
 

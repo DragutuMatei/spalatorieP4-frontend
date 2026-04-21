@@ -426,7 +426,6 @@ function Admin() {
   const displayedBookings = useMemo(() => {
     return [...filteredBookings].sort((a, b) => {
       if (sortConfig.key === "date") {
-        // Parse dates for comparison
         const getDate = (item) => {
           if (!item.date) return 0;
           if (typeof item.date === "object") {
@@ -449,9 +448,16 @@ function Admin() {
         // Secondary sort by time if dates are equal
         const timeA = a.start_interval_time || "";
         const timeB = b.start_interval_time || "";
+
         if (timeA < timeB) return sortConfig.direction === "asc" ? -1 : 1;
         if (timeA > timeB) return sortConfig.direction === "asc" ? 1 : -1;
-
+        return 0;
+      }
+      if (sortConfig.key === "duration") {
+        const durA = Number(a.duration) || 30;
+        const durB = Number(b.duration) || 30;
+        if (durA < durB) return sortConfig.direction === "asc" ? -1 : 1;
+        if (durA > durB) return sortConfig.direction === "asc" ? 1 : -1;
         return 0;
       }
       return 0;
@@ -534,6 +540,7 @@ function Admin() {
           }
           return dayjs(item.date, "DD/MM/YYYY").valueOf();
         };
+
         const dateA = getDate(a);
         const dateB = getDate(b);
 
@@ -543,9 +550,18 @@ function Admin() {
         // Secondary sort by time
         const timeA = a.start_interval_time || "";
         const timeB = b.start_interval_time || "";
+
         if (timeA < timeB) return sortConfig.direction === "asc" ? -1 : 1;
         if (timeA > timeB) return sortConfig.direction === "asc" ? 1 : -1;
-
+        return 0;
+      });
+    }
+    if (sortConfig.key === "duration") {
+      return groups.sort((a, b) => {
+        const durA = Number(a.duration) || 30;
+        const durB = Number(b.duration) || 30;
+        if (durA < durB) return sortConfig.direction === "asc" ? -1 : 1;
+        if (durA > durB) return sortConfig.direction === "asc" ? 1 : -1;
         return 0;
       });
     }
@@ -2010,7 +2026,14 @@ function Admin() {
                         <th>Mașină</th>
                         <th>Oră Început</th>
                         <th>Oră Sfârșit</th>
-                        <th>Durata</th>
+                        <th
+                          onClick={() => requestSort("duration")}
+                          style={{ cursor: "pointer", userSelect: "none" }}
+                        >
+                          Durata {sortConfig.key === "duration" && (
+                            <span>{sortConfig.direction === "asc" ? "↑" : "↓"}</span>
+                          )}
+                        </th>
                         <th>Nume</th>
                         <th>Cameră</th>
                         <th>Motiv anulare</th>
