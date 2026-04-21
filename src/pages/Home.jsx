@@ -2122,13 +2122,20 @@ function Home({ userApproved = false }) {
                   : "Rezervarea uscătorului"}
               </h2>
               <div className="home__booking-summary__details">
-                {lastDryerUser && (
                   <div className="home__booking-summary__detail" style={{ width: '100%', marginBottom: '10px' }}>
+                {lastDryerUser ? (
+                  <>
                     <strong>{lastDryerUser.numeComplet} (cam. {lastDryerUser.camera})</strong>
                     <strong>{lastDryerUser.telefon}  </strong>
                     <span>Ultima utilizare</span>
+                  </>
+                ):
+                
+                <>   <strong>... (cam. ...)</strong>
+                    <strong>... </strong>
+                    <span>Ultima utilizare</span></>
+                }
                   </div>
-                )}
                 <div className="home__booking-summary__detail">
                   <strong>Uscător</strong>
                   <span>Echipament selectat</span>
@@ -2253,7 +2260,7 @@ function Home({ userApproved = false }) {
                       ? todayBucharest.endOf("day").toDate()
                       : user?.role === "admin"
                         ? undefined
-                        : dayjs().add(4, "weeks").toDate()
+                        : dayjs().add(3, "weeks").toDate()
                   }
                 />
 
