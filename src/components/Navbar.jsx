@@ -1,216 +1,99 @@
-import React, { useEffect, useMemo, useState, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
-import ThemeToggle from "./ThemeToggle";
 import { useAuth } from "../utils/AuthContext";
-import Logo from "./Logo";
-import "../assets/styles/components/Navbar.scss";
-import "./NavbarDropdown.scss";
+import { useSocket } from "../utils/SocketContext";
 import { useTheme } from "../contexts/ThemeContext";
+import ThemeToggle from "./ThemeToggle";
+import Logo from "./Logo";
+import "./Navbar.scss";
 
 function Navbar() {
   const { user, loading, signUserOut } = useAuth();
-  const location = useLocation();
   const { theme } = useTheme();
+  const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isDocsDropdownOpen, setIsDocsDropdownOpen] = useState(false);
-  const [isMobileDocsOpen, setIsMobileDocsOpen] = useState(false);
-  const [isNavCompactOpen, setIsNavCompactOpen] = useState(false);
-  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
-  const mobileMenuRef = useRef(null);
-  const dropdownRef = useRef(null);
-  const compactMenuRef = useRef(null);
-  const accountMenuRef = useRef(null);
+  const [isDocsOpen, setIsDocsOpen] = useState(false);
+  const [isAccountOpen, setIsAccountOpen] = useState(false);
+  
+  const docsRef = useRef(null);
+  const accountRef = useRef(null);
 
-  // Lista de documente disponibile
+  const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
+    setIsDocsOpen(false);
+  };
+
+  const isActive = (path) => location.pathname === path;
+
   const documents = [
-    {
-      name: "Curatarea sitelor",
-      file: "Curatarea sitelor.pdf",
-    },
-    {
-      name: "Ghid programari",
-      file: "Ghid programari.pdf",
-    },
+    { name: "Curatarea sitelor", file: "Curatarea sitelor.pdf" },
+    { name: "Ghid programari", file: "Ghid programari.pdf" },
     { name: "Ghid uscator", file: "Ghid uscator.pdf" },
-    {
-      name: "Ghidul ciclurilor de spalare",
-      file: "Ghidul ciclurilor de spalare.pdf",
-    },
+    { name: "Ghidul ciclurilor de spalare", file: "Ghidul ciclurilor de spalare.pdf" },
     { name: "Manual Uscator", file: "Manual Uscator.pdf" },
-    {
-      name: "Regulament de utilizare a spalatoriei",
-      file: "Regulament de utilizare a spalatoriei.pdf",
-    },
-    {
-      name: "Regulament uscator",
-      file: "Regulament uscator.pdf",
-    },
+    { name: "Regulament de utilizare a spalatoriei", file: "Regulament de utilizare a spalatoriei.pdf" },
+    { name: "Regulament uscator", file: "Regulament uscator.pdf" },
   ];
 
-  const toggleMobileMenu = () => setIsMobileMenuOpen((prev) => !prev);
-  const closeMobileMenu = () => setIsMobileMenuOpen(false);
-
-  const toggleDocsDropdown = () => setIsDocsDropdownOpen((prev) => !prev);
-  const closeDocsDropdown = () => setIsDocsDropdownOpen(false);
-  const toggleMobileDocs = () => setIsMobileDocsOpen((prev) => !prev);
-  const closeMobileDocs = () => setIsMobileDocsOpen(false);
-
-  const toggleNavCompact = () => setIsNavCompactOpen((prev) => !prev);
-  const closeNavCompact = () => setIsNavCompactOpen(false);
-
-  const toggleAccountMenu = () => setIsAccountMenuOpen((prev) => !prev);
-  const closeAccountMenu = () => setIsAccountMenuOpen(false);
-
-  const downloadDocument = (filename) => {
-    try {
-      const publicUrl = process.env.PUBLIC_URL || "";
-      const documentUrl = `${publicUrl}/assets/docs/${filename}`;
-
-      const link = document.createElement("a");
-      link.setAttribute("download", filename);
-      link.setAttribute("rel", "noopener noreferrer");
-      link.href = documentUrl;
-
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      closeDocsDropdown();
-    } catch (error) {
-      console.error("Failed to download document", error);
-      window.open(
-        `${process.env.PUBLIC_URL || ""}/assets/docs/${filename}`,
-        "_blank",
-        "noopener,noreferrer"
-      );
-    }
+  const downloadDocument = (file) => {
+    const encodedFile = encodeURIComponent(file);
+    const link = document.createElement("a");
+    link.href = `/assets/docs/${encodedFile}`;
+    link.download = file;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        closeDocsDropdown();
+      if (docsRef.current && !docsRef.current.contains(event.target)) {
+        setIsDocsOpen(false);
       }
-      if (
-        compactMenuRef.current &&
-        !compactMenuRef.current.contains(event.target)
-      ) {
-        closeNavCompact();
-      }
-      if (
-        accountMenuRef.current &&
-        !accountMenuRef.current.contains(event.target)
-      ) {
-        closeAccountMenu();
+      if (accountRef.current && !accountRef.current.contains(event.target)) {
+        setIsAccountOpen(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const navLinks = useMemo(
-    () => [
-      { label: "Programări", to: "/dashboard" },
-      { label: "Programările mele", to: "/my-books" },
-      { label: "Profil", to: "/profile" },
-    ],
-    []
-  );
-
-  const isActive = (path) => location.pathname === path;
-
-  useEffect(() => {
-    if (!isMobileMenuOpen) {
-      closeMobileDocs();
-    }
-  }, [isMobileMenuOpen]);
-
-  // Prevent body scrolling when mobile menu is open
-  useEffect(() => {
-    const originalOverflow = document.body.style.overflow;
-    const originalTouchAction = document.body.style.touchAction;
-
-    if (isMobileMenuOpen) {
-      document.body.style.overflow = "hidden";
-      document.body.style.touchAction = "none";
-    } else {
-      document.body.style.overflow = originalOverflow || "";
-      document.body.style.touchAction = originalTouchAction || "";
-    }
-
-    return () => {
-      document.body.style.overflow = originalOverflow;
-      document.body.style.touchAction = originalTouchAction;
-    };
-  }, [isMobileMenuOpen]);
+  if (loading) return null;
 
   return (
     <nav className="navbar">
       <div className="navbar__container">
-        {/* Logo */}
-        <Link
-          to={user ? "/dashboard" : "/"}
-          className="navbar__logo"
-          onClick={closeMobileMenu}
-        >
+        <Link to={user ? "/dashboard" : "/"} className="navbar__logo" onClick={closeMobileMenu}>
           <Logo color={theme === "dark" ? "#FFFFFF" : "#050505"} />
           <span className="navbar__brand">Spălătorie P4</span>
         </Link>
 
-        {!loading && user && (
+        {user && (
           <>
-            {/* Full navigation for desktop */}
-            <div className="navbar__nav navbar__nav--full">
-              {navLinks.map(({ label, to }) => (
-                <Link
-                  key={to}
-                  to={to}
-                  className={`navbar__link ${
-                    isActive(to) ? "navbar__link--active" : ""
-                  }`}
-                >
-                  {label}
-                </Link>
-              ))}
-              <div className="navbar__dropdown" ref={dropdownRef}>
-                <button
-                  className="navbar__link navbar__link--dropdown"
-                  onClick={toggleDocsDropdown}
-                  aria-expanded={isDocsDropdownOpen}
-                >
+            <div className="navbar__desktop-nav">
+              <Link to="/dashboard" className={`navbar__link ${isActive("/dashboard") ? "navbar__link--active" : ""}`}>
+                Programări
+              </Link>
+              <Link to="/my-books" className={`navbar__link ${isActive("/my-books") ? "navbar__link--active" : ""}`}>
+                Rezervările mele
+              </Link>
+              
+              <div className="navbar__dropdown" ref={docsRef}>
+                <button className={`navbar__link navbar__link--dropdown ${isDocsOpen ? "navbar__link--open" : ""}`} onClick={() => setIsDocsOpen(!isDocsOpen)}>
                   Regulamente
-                  <svg
-                    className={`dropdown-icon ${
-                      isDocsDropdownOpen ? "dropdown-icon--open" : ""
-                    }`}
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                  >
-                    <polyline points="6,9 12,15 18,9" />
+                  <svg className="dropdown-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <polyline points="6 9 12 15 18 9"></polyline>
                   </svg>
                 </button>
-
-                {isDocsDropdownOpen && (
+                {isDocsOpen && (
                   <div className="navbar__dropdown-menu">
-                    {documents.map((doc, index) => (
-                      <button
-                        key={index}
-                        className="navbar__dropdown-item"
-                        onClick={() => downloadDocument(doc.file)}
-                      >
-                        <svg
-                          className="download-icon"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                        >
-                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                          <polyline points="7,10 12,15 17,10" />
-                          <line x1="12" y1="15" x2="12" y2="3" />
+                    {documents.map((doc, i) => (
+                      <button key={i} className="navbar__dropdown-item" onClick={() => downloadDocument(doc.file)}>
+                        <svg className="download-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" style={{width: '16px', marginRight: '8px'}}>
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                          <polyline points="7,10 12,15 17,10"></polyline>
+                          <line x1="12" y1="15" x2="12" y2="3"></line>
                         </svg>
                         {doc.name}
                       </button>
@@ -218,311 +101,75 @@ function Navbar() {
                   </div>
                 )}
               </div>
+
               {user.role === "admin" && (
-                <Link
-                  to="/admin"
-                  className={`navbar__link navbar__link--admin ${
-                    isActive("/admin") ? "navbar__link--active" : ""
-                  }`}
-                >
+                <Link to="/admin" className={`navbar__link navbar__link--admin ${isActive("/admin") ? "navbar__link--active" : ""}`}>
                   Admin
                 </Link>
               )}
             </div>
 
-            {/* Compact dropdown for medium widths */}
-            <div className="navbar__compact" ref={compactMenuRef}>
-              <button
-                className={`navbar__compact-trigger ${
-                  isNavCompactOpen ? "navbar__compact-trigger--open" : ""
-                }`}
-                onClick={toggleNavCompact}
-                aria-expanded={isNavCompactOpen}
-                aria-label="Deschide meniul de navigare"
-              >
-                <div
-                  className={`navbar__hamburger ${
-                    isNavCompactOpen ? "navbar__hamburger--open" : ""
-                  }`}
-                >
-                  <span></span>
-                  <span></span>
-                  <span></span>
-                </div>
-              </button>
-              {isNavCompactOpen && (
-                <div className="navbar__compact-menu">
-                  {navLinks.map(({ label, to }) => (
-                    <Link
-                      key={to}
-                      to={to}
-                      className={`navbar__compact-item ${
-                        isActive(to) ? "navbar__compact-item--active" : ""
-                      }`}
-                      onClick={closeNavCompact}
-                    >
-                      {label}
-                    </Link>
-                  ))}
-                  <div className="navbar__compact-divider" />
-                  <button
-                    className="navbar__compact-item"
-                    onClick={toggleDocsDropdown}
-                  >
-                    Regulamente
-                  </button>
-                  {isDocsDropdownOpen && (
-                    <div className="navbar__compact-submenu">
-                      {documents.map((doc) => (
-                        <button
-                          key={doc.file}
-                          className="navbar__dropdown-item navbar__dropdown-item--compact"
-                          onClick={() => {
-                            downloadDocument(doc.file);
-                            closeNavCompact();
-                          }}
-                        >
-                          <svg
-                            className="download-icon"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                          >
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                            <polyline points="7,10 12,15 17,10" />
-                            <line x1="12" y1="15" x2="12" y2="3" />
-                          </svg>
-                          {doc.name}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </>
-        )}
-
-        {/* Right side actions */}
-        <div className="navbar__actions">
-          <ThemeToggle />
-
-          {!loading && user ? (
-            <>
-              {/* User info */}
-              <div className="navbar__account" ref={accountMenuRef}>
-                <button
-                  className={`navbar__account-trigger ${
-                    isAccountMenuOpen ? "navbar__account-trigger--open" : ""
-                  }`}
-                  onClick={toggleAccountMenu}
-                  aria-expanded={isAccountMenuOpen}
-                  aria-label="Deschide meniul contului"
-                >
-                  <div
-                    className={`navbar__hamburger navbar__account-hamburger ${
-                      isAccountMenuOpen ? "navbar__hamburger--open" : ""
-                    }`}
-                  >
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                  </div>
-                  <img
-                    src={user.google?.photoURL}
-                    alt={user.numeComplet}
-                    className="navbar__avatar navbar__avatar--desktop"
-                  />
-                  <span className="navbar__username navbar__username--desktop">
-                    {user.numeComplet}
-                  </span>
-                  <svg
-                    className="navbar__account-caret"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                  >
-                    <polyline points="6,9 12,15 18,9" />
-                  </svg>
+            <div className="navbar__actions">
+              <ThemeToggle />
+              
+              <div className="navbar__account-desktop" ref={accountRef}>
+                <button className="navbar__account-trigger" onClick={() => setIsAccountOpen(!isAccountOpen)}>
+                  <img src={user.google?.photoURL} alt="avatar" className="navbar__avatar" />
+                  <span className="navbar__username">{user.numeComplet}</span>
                 </button>
-                {isAccountMenuOpen && (
-                  <div className="navbar__account-menu">
-                    {!user.validate && (
-                      <span className="navbar__status navbar__status--pending">
-                        Pending
-                      </span>
-                    )}
-                    {user.role === "admin" && (
-                      <Link
-                        to="/admin"
-                        className="navbar__account-item"
-                        onClick={closeAccountMenu}
-                      >
-                        Admin
-                      </Link>
-                    )}
-                    <button
-                      className="navbar__account-item navbar__account-item--logout"
-                      onClick={async () => {
-                        await signUserOut();
-                        closeAccountMenu();
-                      }}
-                    >
-                      Logout
-                    </button>
+                {isAccountOpen && (
+                  <div className="navbar__dropdown-menu navbar__dropdown-menu--right">
+                    <Link to="/profile" className="navbar__dropdown-item" onClick={() => setIsAccountOpen(false)}>Profil</Link>
+                    <button className="navbar__dropdown-item navbar__dropdown-item--logout" onClick={signUserOut}>Logout</button>
                   </div>
                 )}
               </div>
 
-              {/* Mobile menu button */}
-              <button
-                className="navbar__mobile-toggle d-desktop-none"
-                onClick={toggleMobileMenu}
-                aria-label="Toggle mobile menu"
-              >
-                <span
-                  className={`navbar__hamburger ${
-                    isMobileMenuOpen ? "navbar__hamburger--open" : ""
-                  }`}
-                >
+              <button className="navbar__hamburger" onClick={toggleMobileMenu}>
+                <div className={`hamburger-icon ${isMobileMenuOpen ? "hamburger-icon--open" : ""}`}>
                   <span></span>
                   <span></span>
                   <span></span>
-                </span>
+                </div>
               </button>
-            </>
-          ) : null}
-        </div>
+            </div>
+          </>
+        )}
       </div>
 
-      {/* Mobile Menu */}
-      {!loading && user && (
-        <div
-          className={`navbar__mobile ${
-            isMobileMenuOpen ? "navbar__mobile--open" : ""
-          }`}
-        >
-          <div className="navbar__mobile-header">
-            <img
-              src={user.google?.photoURL}
-              alt={user.numeComplet}
-              className="navbar__avatar"
-            />
-            <div className="navbar__user-info">
-              <span className="navbar__username navbar__username--mobile">
-                {user.numeComplet}
-              </span>
-              {!user.validate && (
-                <span className="navbar__status navbar__status--pending">
-                  Pending Approval
-                </span>
-              )}
+      {user && (
+        <div className={`navbar__mobile-drawer ${isMobileMenuOpen ? "navbar__mobile-drawer--open" : ""}`}>
+          <div className="navbar__mobile-content">
+            <div className="navbar__mobile-user">
+              <img src={user.google?.photoURL} alt="avatar" className="navbar__avatar-large" />
+              <div className="navbar__mobile-user-info">
+                <strong>{user.numeComplet}</strong>
+                <span>{user.google?.email}</span>
+              </div>
             </div>
-          </div>
 
-          <div className="navbar__mobile-nav">
-            <Link
-              to="/dashboard"
-              className={`navbar__mobile-link ${
-                isActive("/dashboard") ? "navbar__mobile-link--active" : ""
-              }`}
-              onClick={closeMobileMenu}
-            >
-              Programări
-            </Link>
-            <Link
-              to="/my-books"
-              className={`navbar__mobile-link ${
-                isActive("/my-books") ? "navbar__mobile-link--active" : ""
-              }`}
-              onClick={closeMobileMenu}
-            >
-              Programările mele
-            </Link>
-            <Link
-              to="/profile"
-              className={`navbar__mobile-link ${
-                isActive("/profile") ? "navbar__mobile-link--active" : ""
-              }`}
-              onClick={closeMobileMenu}
-            >
-              Profil
-            </Link>
-            <div className="navbar__mobile-docs">
-              <button
-                className={`navbar__mobile-link navbar__mobile-link--dropdown ${
-                  isMobileDocsOpen ? "navbar__mobile-link--active" : ""
-                }`}
-                onClick={toggleMobileDocs}
-                aria-expanded={isMobileDocsOpen}
-              >
-                Regulamente
-                <svg
-                  className={`dropdown-icon ${
-                    isMobileDocsOpen ? "dropdown-icon--open" : ""
-                  }`}
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                >
-                  <polyline points="6,9 12,15 18,9" />
-                </svg>
-              </button>
-              {isMobileDocsOpen && (
-                <div className="navbar__mobile-docs-list">
-                  {documents.map((doc) => (
-                    <button
-                      key={doc.file}
-                      className="navbar__dropdown-item navbar__dropdown-item--mobile"
-                      onClick={() => {
-                        downloadDocument(doc.file);
-                        closeMobileDocs();
-                        closeMobileMenu();
-                      }}
-                    >
-                      <svg
-                        className="download-icon"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                      >
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                        <polyline points="7,10 12,15 17,10" />
-                        <line x1="12" y1="15" x2="12" y2="3" />
-                      </svg>
-                      {doc.name}
-                    </button>
-                  ))}
-                </div>
+            <div className="navbar__mobile-links">
+              <Link to="/dashboard" onClick={closeMobileMenu}>Programări</Link>
+              <Link to="/my-books" onClick={closeMobileMenu}>Rezervările mele</Link>
+              <Link to="/profile" onClick={closeMobileMenu}>Profilul meu</Link>
+              
+              <div className="navbar__mobile-docs">
+                <p>Regulamente:</p>
+                {documents.map((doc, i) => (
+                  <button key={i} onClick={() => downloadDocument(doc.file)}>
+                    {doc.name}
+                  </button>
+                ))}
+              </div>
+
+              {user.role === "admin" && (
+                <Link to="/admin" className="navbar__link--admin" onClick={closeMobileMenu}>Admin Panel</Link>
               )}
-            </div>
-            {user.role === "admin" && (
-              <Link
-                to="/admin"
-                className={`navbar__mobile-link navbar__mobile-link--admin ${
-                  isActive("/admin") ? "navbar__mobile-link--active" : ""
-                }`}
-                onClick={closeMobileMenu}
-              >
-                Admin
-              </Link>
-            )}
-            <div
-              className="btn btn-secondary navbar__mobile-logout"
-              onClick={async () => {
-                await signUserOut();
-                closeMobileMenu();
-              }}
-            >
-              Logout
+
+              <button className="navbar__logout-btn" onClick={signUserOut}>Logout</button>
             </div>
           </div>
         </div>
-      )}
-
-      {/* Mobile menu overlay */}
-      {isMobileMenuOpen && (
-        <div className="navbar__overlay" onClick={closeMobileMenu} />
       )}
     </nav>
   );
