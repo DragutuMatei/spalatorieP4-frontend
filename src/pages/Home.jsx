@@ -93,6 +93,7 @@ function Home({ userApproved = false }) {
   const [liveDryerSelection, setLiveDryerSelection] = useState(null);
   const [isUserApproved, setIsUserApproved] = useState(Boolean(userApproved));
   const [lastDryerUser, setLastDryerUser] = useState(null);
+  const autoClearingRef = useRef(false);
 
   useEffect(() => {
     if (selectedMachine === "Uscator") {
@@ -479,6 +480,18 @@ function Home({ userApproved = false }) {
     // Listener pentru anularea rezervărilor temporare
     socket.on("cancelTempReservation", (data) => {
       if (data.userId) {
+        // Dacă rezervarea anulată este a noastră, curățăm starea locală
+        if (data.userId === user?.uid) {
+          autoClearingRef.current = true;
+          setProgramari([]);
+          setSelectedMachine("");
+          toast_warn("Rezervarea ta temporară a expirat din cauza inactivității.");
+          // Resetăm ref-ul după un scurt delay pentru a permite useEffect să ruleze (dacă e cazul) 
+          // dar de fapt useEffect va rula sincron după setProgramari dacă nu e batching, 
+          // sau în următorul microtask.
+          setTimeout(() => { autoClearingRef.current = false; }, 100);
+        }
+
         setTempReservations((prev) => {
           const newReservations = { ...prev };
           delete newReservations[data.userId];
@@ -770,6 +783,8 @@ function Home({ userApproved = false }) {
 
   // Effect pentru emiterea rezervărilor temporare
   useEffect(() => {
+    if (autoClearingRef.current) return;
+
     if (programari.length > 0 && selectedMachine) {
       emitTempReservation();
     } else if (programari.length === 0 && selectedMachine === "") {
@@ -1325,7 +1340,17 @@ function Home({ userApproved = false }) {
     };
 
     const handleCancelDryerSelection = (data) => {
-      if (data?.userId && data.userId !== user?.uid) {
+      if (data?.userId) {
+        // Dacă selecția anulată este a noastră, curățăm starea locală
+        if (data.userId === user?.uid) {
+          autoClearingRef.current = true;
+          setDryerDurationHours("");
+          setDryerDurationMinutes("");
+          setSelectedMachine("");
+          toast_warn("Selecția ta pentru uscător a expirat din cauza inactivității.");
+          setTimeout(() => { autoClearingRef.current = false; }, 100);
+        }
+
         setLiveDryerSelection((current) => {
           if (current?.userId === data.userId) {
             return null;
@@ -1385,7 +1410,6 @@ function Home({ userApproved = false }) {
   }, [
     isDryerSelected,
     dryerDurationTotalMinutes,
-    dryerDraftTiming,
     emitDryerSelection,
     emitCancelDryerSelection,
     user,
