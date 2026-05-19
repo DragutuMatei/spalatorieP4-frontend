@@ -1761,7 +1761,7 @@ function Home({ userApproved = false }) {
         setSelectedMachine("");
         cancelTempReservation();
         emitCancelDryerSelection();
-        setShowCadathonPopup(true);
+        // setShowCadathonPopup(true);
       } else {
         toast_error(rasp.data.message || "Eroare la salvarea programării!");
       }
@@ -1852,7 +1852,7 @@ function Home({ userApproved = false }) {
         setDryerDurationMinutes("");
         setDryerStatusTick(Date.now());
         emitCancelDryerSelection();
-        setShowCadathonPopup(true);
+        // setShowCadathonPopup(true);
       } else {
         toast_error(rasp.data.message || "Eroare la rezervarea uscătorului.");
       }
