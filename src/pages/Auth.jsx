@@ -18,16 +18,14 @@ const rooms = (() => {
     }
   };
 
-  addRange(10, 17);
-  allRooms.push("019");
-  addRange(21, 26);
-  addRange(113, 130);
-  addRange(211, 232);
-  addRange(311, 332);
-  addRange(411, 432);
-  addRange(511, 532);
+  addRange(12, 20);
+  addRange(23, 47);
+  addRange(101, 140);
+  addRange(201, 240);
+  addRange(301, 340);
+  addRange(401, 440);
 
-  for (let i = 1; i <= 5; i += 1) {
+  for (let i = 1; i <= 4; i += 1) {
     allRooms.push(`Oficiul ${i} mic`);
     allRooms.push(`Oficiul ${i} mare`);
   }
