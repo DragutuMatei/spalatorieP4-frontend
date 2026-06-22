@@ -28,7 +28,8 @@ const rooms = (() => {
   addRange(511, 532);
 
   for (let i = 1; i <= 5; i += 1) {
-    allRooms.push(`Oficiul ${i}`);
+    allRooms.push(`Oficiul ${i} mic`);
+    allRooms.push(`Oficiul ${i} mare`);
   }
 
   return allRooms;

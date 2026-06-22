@@ -66,7 +66,7 @@ function Navbar() {
       <div className="navbar__container">
         <Link to={user ? "/dashboard" : "/"} className="navbar__logo" onClick={closeMobileMenu}>
           <Logo color={theme === "dark" ? "#FFFFFF" : "#050505"} />
-          <span className="navbar__brand">Spălătorie P4</span>
+          <span className="navbar__brand">Spălătorie P25</span>
         </Link>
 
         {user && (
