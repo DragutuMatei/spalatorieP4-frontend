@@ -95,7 +95,12 @@ export const AuthProvider = ({ children }) => {
 
       if (!res.data.success) {
         if (res.status === 409 || res.data.code === 409) {
-          toast_warn("Există deja un cont pentru acest utilizator. Autentifică-te.");
+          const serverMessage = res.data.message || "";
+          if (serverMessage.includes("Camera este deja ocupată")) {
+            toast_warn(serverMessage);
+          } else {
+            toast_warn("Există deja un cont pentru acest utilizator. Autentifică-te.");
+          }
         } else {
           toast_error(res.data.message || "Nu s-a putut crea contul.");
         }
@@ -111,7 +116,12 @@ export const AuthProvider = ({ children }) => {
       return res.data.user;
     } catch (error) {
       if (error.response?.status === 409) {
-        toast_warn("Există deja un cont pentru acest utilizator. Autentifică-te.");
+        const serverMessage = error.response?.data?.message || "";
+        if (serverMessage.includes("Camera este deja ocupată")) {
+          toast_warn(serverMessage);
+        } else {
+          toast_warn("Există deja un cont pentru acest utilizator. Autentifică-te.");
+        }
       } else {
         const errMessage = error.response?.data?.message || error.message || "Eroare necunoscută";
         toast_error(`Google Sign-In Error: ${errMessage}`);
@@ -153,7 +163,12 @@ export const AuthProvider = ({ children }) => {
       }
       return res.data;
     } catch (error) {
-      toast_error("Nu s-a putut updata profilul");
+      const errMessage = error.response?.data?.message || "Nu s-a putut updata profilul";
+      if (errMessage.includes("Camera este deja ocupată")) {
+        toast_error(errMessage);
+      } else {
+        toast_error(errMessage);
+      }
       return null;
     }
   };
