@@ -135,8 +135,8 @@ function Home({ userApproved = false }) {
   const todayBucharest = useMemo(() => dayjs().tz(BUCURESTI_TZ).startOf("day"), []);
 
   const buildHours = useCallback(() => {
-    const startHour = dayjs(value).tz().startOf("day").hour(8);
-    const endHour = dayjs(value).tz().startOf("day").hour(22);
+    const startHour = dayjs(value).tz().startOf("day").hour(7);
+    const endHour = dayjs(value).tz().startOf("day").hour(23);
 
     let hoursArray = [];
     let i = 0;
