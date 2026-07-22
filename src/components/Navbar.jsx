@@ -39,7 +39,7 @@ function Navbar() {
   const downloadDocument = (file) => {
     const encodedFile = encodeURIComponent(file);
     const link = document.createElement("a");
-    link.href = `/assets/docs/${encodedFile}`;
+    link.href = `/assets/docs/p25/${encodedFile}`;
     link.download = file;
     document.body.appendChild(link);
     link.click();
