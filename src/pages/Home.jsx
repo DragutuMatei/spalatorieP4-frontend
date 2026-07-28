@@ -892,7 +892,6 @@ function Home({ userApproved = false }) {
       usersProgramari.forEach((booking) => {
         if (
           booking.user?.uid === user.uid &&
-          booking.machine === machine &&
           booking.active?.status === true
         ) {
           const bookingStart = parseTimeToMinutes(booking.start_interval_time);
@@ -902,7 +901,7 @@ function Home({ userApproved = false }) {
       });
       if (existingIntervals + programari.length + additionalIntervals > 4) {
         toast_error(
-          "Ai atins limita de 2 ore (4 intervale) pe zi pentru această mașină."
+          "Ai atins limita de 2 ore (4 intervale) pe zi per cont."
         );
         return false;
       }
