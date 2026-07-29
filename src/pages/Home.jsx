@@ -135,7 +135,7 @@ function Home({ userApproved = false }) {
   const todayBucharest = useMemo(() => dayjs().tz(BUCURESTI_TZ).startOf("day"), []);
 
   const buildHours = useCallback(() => {
-    const startHour = dayjs(value).tz().startOf("day").hour(7);
+    const startHour = dayjs(value).tz().startOf("day").hour(8);
     const endHour = dayjs(value).tz().startOf("day").hour(23);
 
     let hoursArray = [];
@@ -887,19 +887,29 @@ function Home({ userApproved = false }) {
     }
 
     const checkBookingLimit = (additionalIntervals) => {
-      if (user?.role === "admin") return true;
+      const role = user?.role || "user";
+      if (role !== "user") return true;
       let existingIntervals = 0;
+      const selectedDateStr = dayjs(value).format("DD/MM/YYYY");
+
       usersProgramari.forEach((booking) => {
+        const bookingDateStr = toBucharestDayjs(booking.date).format("DD/MM/YYYY");
         if (
           booking.user?.uid === user.uid &&
-          booking.active?.status === true
+          booking.active?.status === true &&
+          bookingDateStr === selectedDateStr
         ) {
           const bookingStart = parseTimeToMinutes(booking.start_interval_time);
           const bookingEnd = parseTimeToMinutes(booking.final_interval_time);
-          existingIntervals += (bookingEnd - bookingStart) / 30;
+          if (bookingEnd > bookingStart) {
+            existingIntervals += (bookingEnd - bookingStart) / 30;
+          }
         }
       });
-      if (existingIntervals + programari.length + additionalIntervals > 4) {
+
+      const currentDraftCount = selectedMachine === machine ? programari.length : 0;
+
+      if (existingIntervals + currentDraftCount + additionalIntervals > 4) {
         toast_error(
           "Ai atins limita de 2 ore (4 intervale) pe zi per cont."
         );
@@ -907,6 +917,16 @@ function Home({ userApproved = false }) {
       }
       return true;
     };
+
+    if (selectedMachine && selectedMachine !== machine) {
+      if (!checkBookingLimit(1)) {
+        return;
+      }
+      setSelectedMachine(machine);
+      setProgramari([{ ...infos }]);
+      changeStatus(hour_index, machine, STATUS[machine].REZERVAT.status);
+      return;
+    }
 
     setSelectedMachine(machine);
     if (programari.length === 0) {
