@@ -139,17 +139,11 @@ function Home({ userApproved = false }) {
     const endHour = dayjs(value).tz().startOf("day").hour(23);
 
     let hoursArray = [];
-    let i = 0;
-    let current_hour = startHour.hour();
-    let max_hour = endHour.hour();
-    while (current_hour < max_hour) {
-      let start_interval_time = startHour.add(i * 30, "minute").format("HH:mm");
-      let final_interval_time = startHour
-        .add(i * 30 + 30, "minute")
-        .format("HH:mm");
+    let current = startHour;
+    while (current.isBefore(endHour)) {
+      const start_interval_time = current.format("HH:mm");
+      const final_interval_time = current.add(30, "minute").format("HH:mm");
       const time = `${start_interval_time} - ${final_interval_time}`;
-      current_hour += 1 / 2;
-      i++;
       hoursArray.push({
         time,
         start_interval_time,
@@ -166,6 +160,7 @@ function Home({ userApproved = false }) {
             : { ...STATUS["Uscator"].MENTENANTA },
         },
       });
+      current = current.add(30, "minute");
     }
     // Aplică programările și rezervările temporare pe noile ore
     usersProgramari.forEach((pr) => {

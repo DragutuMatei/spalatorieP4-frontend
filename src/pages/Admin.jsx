@@ -12,6 +12,7 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
+import { generateMaintenanceTimeSlots } from "../utils/maintenanceSlots";
 
 import {
   BarChart,
@@ -610,17 +611,7 @@ function Admin() {
     }, 300);
     return () => clearTimeout(timer);
   }, [userSearchTerm]);
-  // Generate time slots for maintenance
-  const generateTimeSlots = () => {
-    const slots = [];
-    let time = dayjs().tz().startOf("day").hour(8);
-    while (time.hour() <= 22) {
-      slots.push(time.format("HH:mm"));
-      time = time.add(30, "minute");
-    }
-    slots.pop();
-    return slots;
-  };
+  const generateTimeSlots = () => generateMaintenanceTimeSlots({ baseDate: dayjs() });
 
   const getSettings = async () => {
     try {
