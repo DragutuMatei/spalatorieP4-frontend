@@ -614,7 +614,7 @@ function Admin() {
   const generateTimeSlots = () => {
     const slots = [];
     let time = dayjs().tz().startOf("day").hour(8);
-    while (time.hour() <= 22) {
+    while (time.hour() <= 23) {
       slots.push(time.format("HH:mm"));
       time = time.add(30, "minute");
     }
