@@ -12,7 +12,7 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
-import { generateMaintenanceTimeSlots } from "../utils/maintenanceSlots";
+import { generateMaintenanceTimeSlots, getMaintenanceIntervalEndTime } from "../utils/maintenanceSlots";
 
 import {
   BarChart,
@@ -1045,12 +1045,17 @@ function Admin() {
         return;
       }
 
+      const maintenanceStartTime = maintenanceSlots[0];
+      const maintenanceEndTime = getMaintenanceIntervalEndTime(
+        maintenanceSlots[maintenanceSlots.length - 1]
+      );
+
       const rasp = await AXIOS.post("/api/maintenance", {
         machine: maintenanceMachine,
         date: formattedDates[0], // Keep for backward compatibility
         dates: formattedDates,
-        startTime: maintenanceSlots[0],
-        endTime: maintenanceSlots[maintenanceSlots.length - 1],
+        startTime: maintenanceStartTime,
+        endTime: maintenanceEndTime,
         slots: maintenanceSlots,
       });
 

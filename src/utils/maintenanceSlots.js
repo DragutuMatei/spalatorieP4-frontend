@@ -24,3 +24,13 @@ export const generateMaintenanceTimeSlots = ({
 
   return slots;
 };
+
+export const getMaintenanceIntervalEndTime = (timeString, slotDurationMinutes = 30) => {
+  if (!timeString) {
+    return timeString;
+  }
+
+  const [hours, minutes] = timeString.split(":").map(Number);
+  const baseTime = dayjs().tz().startOf("day").hour(hours).minute(minutes);
+  return baseTime.add(slotDurationMinutes, "minute").format("HH:mm");
+};
