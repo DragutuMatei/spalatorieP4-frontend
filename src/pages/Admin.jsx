@@ -188,6 +188,7 @@ function Admin() {
     dryerEnabled: true,
     m1Enabled: true,
     m2Enabled: true,
+    m3Enabled: true,
     blockPastSlots: false,
   });
   const [users, setUsers] = useState([]);
@@ -740,7 +741,9 @@ function Admin() {
               ? "M1"
               : key === "m2Enabled"
                 ? "M2"
-                : "Uscător"
+                : key === "m3Enabled"
+                  ? "M3"
+                  : "Uscător"
             } au fost ${value ? "activate" : "dezactivate"}!`
         );
       }
@@ -1354,6 +1357,25 @@ function Admin() {
               <div className="admin__settings-item">
                 <div className="label">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                    <line x1="8" y1="21" x2="16" y2="21" />
+                    <line x1="12" y1="17" x2="12" y2="21" />
+                  </svg>
+                  Mașina M3
+                  <span className="status">
+                    {settings.m3Enabled ? "Activat" : "Dezactivat"}
+                  </span>
+                </div>
+                <div
+                  className={`toggle ${settings.m3Enabled ? "toggle--active" : ""
+                    }`}
+                  onClick={() => saveSettings("m3Enabled", !settings.m3Enabled)}
+                />
+              </div>
+
+              <div className="admin__settings-item">
+                <div className="label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                     <circle cx="12" cy="12" r="3" />
                     <path d="M12 1v6m0 6v6" />
                   </svg>
@@ -1634,6 +1656,7 @@ function Admin() {
                     <option value="">Selectează mașina</option>
                     <option value="M1">Mașina M1</option>
                     <option value="M2">Mașina M2</option>
+                    <option value="M3">Mașina M3</option>
                     <option value="Uscator">Uscător</option>
                   </select>
                 </div>

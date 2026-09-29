@@ -78,6 +78,7 @@ function Home({ userApproved = false }) {
   const [realStates, setRealStates] = useState({
     M1: false,
     M2: false,
+    M3: false,
     Uscator: false,
   });
   const [maintenanceIntervals, setMaintenanceIntervals] = useState([]);
@@ -119,6 +120,7 @@ function Home({ userApproved = false }) {
     () => [
       { id: "m1", name: "M1" },
       { id: "m2", name: "M2" },
+      { id: "m3", name: "M3" },
     ],
     []
   );
@@ -161,6 +163,9 @@ function Home({ userApproved = false }) {
           M2: realStates["M2"]
             ? { ...STATUS["M2"].DISPONIBIL }
             : { ...STATUS["M2"].MENTENANTA },
+          M3: realStates["M3"]
+            ? { ...STATUS["M3"].DISPONIBIL }
+            : { ...STATUS["M3"].MENTENANTA },
           Uscator: realStates["Uscator"]
             ? { ...STATUS["Uscator"].DISPONIBIL }
             : { ...STATUS["Uscator"].MENTENANTA },
@@ -401,15 +406,17 @@ function Home({ userApproved = false }) {
       const rasp = await AXIOS.get("/api/settings");
       if (rasp.data.success) {
         setRealStates({
-          M1: rasp.data.settings.m1Enabled,
-          M2: rasp.data.settings.m2Enabled,
-          Uscator: rasp.data.settings.dryerEnabled,
+          M1: Boolean(rasp.data.settings.m1Enabled),
+          M2: Boolean(rasp.data.settings.m2Enabled),
+          M3: typeof rasp.data.settings.m3Enabled !== "undefined" ? Boolean(rasp.data.settings.m3Enabled) : true,
+          Uscator: Boolean(rasp.data.settings.dryerEnabled),
         });
         setBlockPastSlotsEnabled(Boolean(rasp.data.settings.blockPastSlots));
       } else if (rasp.data.status === 404) {
         setRealStates({
           M1: false,
           M2: false,
+          M3: false,
           Uscator: false,
         });
         setBlockPastSlotsEnabled(false);
@@ -418,6 +425,7 @@ function Home({ userApproved = false }) {
         setRealStates({
           M1: false,
           M2: false,
+          M3: false,
           Uscator: false,
         });
         setBlockPastSlotsEnabled(false);
@@ -428,6 +436,7 @@ function Home({ userApproved = false }) {
         setRealStates({
           M1: false,
           M2: false,
+          M3: false,
           Uscator: false,
         });
         setBlockPastSlotsEnabled(false);
@@ -532,6 +541,7 @@ function Home({ userApproved = false }) {
       const {
         m1Enabled,
         m2Enabled,
+        m3Enabled,
         dryerEnabled,
         blockPastSlots,
       } = payload;
@@ -539,6 +549,7 @@ function Home({ userApproved = false }) {
       if (
         typeof m1Enabled === "undefined" &&
         typeof m2Enabled === "undefined" &&
+        typeof m3Enabled === "undefined" &&
         typeof dryerEnabled === "undefined"
       ) {
         console.warn("Settings payload incomplete, refetching...");
@@ -549,6 +560,7 @@ function Home({ userApproved = false }) {
       setRealStates({
         M1: Boolean(m1Enabled),
         M2: Boolean(m2Enabled),
+        M3: typeof m3Enabled !== "undefined" ? Boolean(m3Enabled) : true,
         Uscator: Boolean(dryerEnabled),
       });
       setBlockPastSlotsEnabled(Boolean(blockPastSlots));
@@ -1726,7 +1738,7 @@ function Home({ userApproved = false }) {
     }
 
     if (!isWashingMachineSelected) {
-      toast_warn("Selectează M1 sau M2 pentru a folosi această acțiune.");
+      toast_warn("Selectează o mașină de spălat (M1, M2 sau M3) pentru a folosi această acțiune.");
       return;
     }
 
