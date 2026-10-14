@@ -465,9 +465,14 @@ END:VCALENDAR
                   const start_in_min = h1 * 60 + m1;
                   const final_in_min = h2 * 60 + m2;
                   const durata = final_in_min - start_in_min;
+                  const isExpired = Boolean(
+                    pro.active?.expiredAt ||
+                    (pro.active?.message && pro.active.message.toLowerCase().includes("finalizat"))
+                  );
                   const isCancelled =
-                    Boolean(pro.active && (pro.active.status === false || pro.active === false));
-                  const isActive = !isCancelled;
+                    Boolean(pro.active && (pro.active.status === false || pro.active === false)) &&
+                    !isExpired;
+                  const isActive = !isCancelled && !isExpired;
 
                   return (
                     <div key={pro.uid} className="mybooks__card">
@@ -480,16 +485,23 @@ END:VCALENDAR
                           className={`badge badge--${
                             isActive
                               ? "success"
+                              : isExpired
+                              ? "info"
                               : "error"
                           }`}
                         >
-                          {isCancelled ? "Anulată" : "Activă"}
+                          {isActive ? "Activă" : isExpired ? "Finalizată" : "Anulată"}
                         </span>
                       </div>
 
                       {isCancelled && pro.active?.message && (
                         <div className="mybooks__status-reason">
                           Motiv anulare: {pro.active.message}
+                        </div>
+                      )}
+                      {isExpired && (
+                        <div className="mybooks__status-reason">
+                          {pro.active?.message || "Program finalizat cu succes"}
                         </div>
                       )}
 
@@ -625,17 +637,24 @@ END:VCALENDAR
                         const start_in_min = h1 * 60 + m1;
                         const final_in_min = h2 * 60 + m2;
                         const durata = final_in_min - start_in_min;
+                        const isExpired = Boolean(
+                          pro.active?.expiredAt ||
+                          (pro.active?.message && pro.active.message.toLowerCase().includes("finalizat"))
+                        );
                         const isCancelled =
-                          Boolean(pro.active && (pro.active.status === false || pro.active === false));
-                        const isActive = !isCancelled;
+                          Boolean(pro.active && (pro.active.status === false || pro.active === false)) &&
+                          !isExpired;
+                        const isActive = !isCancelled && !isExpired;
 
                         return (
                           <tr
                             key={pro.uid}
                             className={
-                              isCancelled
-                                ? "cancelled"
-                                : "active"
+                              isActive
+                                ? "active"
+                                : isExpired
+                                ? "finished"
+                                : "cancelled"
                             }
                           >
                             <td>
@@ -646,7 +665,32 @@ END:VCALENDAR
                             <td>{pro.final_interval_time}</td>
                             <td>{durata} minute</td>
                             <td>
-                              {isCancelled ? (
+                              {isActive ? (
+                                <div className="mybooks__status mybooks__status--active">
+                                  <svg
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                  >
+                                    <circle cx="12" cy="12" r="10" />
+                                    <polyline points="9 12 11 14 15 10" />
+                                  </svg>
+                                  <span>Activă</span>
+                                </div>
+                              ) : isExpired ? (
+                                <div className="mybooks__status" style={{ color: "#3b82f6", display: "flex", alignItems: "center", gap: "6px" }}>
+                                  <svg
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    style={{ width: "16px", height: "16px" }}
+                                  >
+                                    <circle cx="12" cy="12" r="10" />
+                                    <polyline points="9 12 11 14 15 10" />
+                                  </svg>
+                                  <span>Finalizată</span>
+                                </div>
+                              ) : (
                                 <div className="mybooks__status mybooks__status--cancelled">
                                   <svg
                                     viewBox="0 0 24 24"
@@ -659,22 +703,12 @@ END:VCALENDAR
                                   </svg>
                                   <span>Anulată</span>
                                 </div>
-                              ) : (
-                                <div className="mybooks__status mybooks__status--active">
-                                  <svg
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                  >
-                                    <circle cx="12" cy="12" r="10" />
-                                    <polyline points="9 12 11 14 15 10" />
-                                  </svg>
-                                  <span>Activă</span>
-                                </div>
                               )}
                             </td>
                             <td>
                               {isCancelled && pro.active?.message
+                                ? pro.active.message
+                                : isExpired && pro.active?.message
                                 ? pro.active.message
                                 : "-"}
                             </td>

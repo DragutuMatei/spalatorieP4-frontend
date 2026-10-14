@@ -151,22 +151,35 @@ function Home({ userApproved = false }) {
   const [isUserApproved, setIsUserApproved] = useState(Boolean(userApproved));
   const [lastDryerUser, setLastDryerUser] = useState(null);
   const autoClearingRef = useRef(false);
+  const selectedMachineRef = useRef(selectedMachine);
+
+  useEffect(() => {
+    selectedMachineRef.current = selectedMachine;
+  }, [selectedMachine]);
+
+  const fetchLastDryerUser = useCallback((machine) => {
+    if (!isDryerMachine(machine)) {
+      setLastDryerUser(null);
+      return;
+    }
+    AXIOS.get(`/api/programare/uscator/last?machine=${encodeURIComponent(machine)}&_t=${Date.now()}`)
+      .then((res) => {
+        if (res.data.success && res.data.booking) {
+          setLastDryerUser(res.data.booking.user);
+        } else {
+          setLastDryerUser(null);
+        }
+      })
+      .catch((err) => console.error("Error fetching last dryer user:", err));
+  }, []);
 
   useEffect(() => {
     if (isDryerMachine(selectedMachine)) {
-      AXIOS.get(`/api/programare/uscator/last?machine=${encodeURIComponent(selectedMachine)}`)
-        .then((res) => {
-          if (res.data.success && res.data.booking) {
-            setLastDryerUser(res.data.booking.user);
-          } else {
-            setLastDryerUser(null);
-          }
-        })
-        .catch((err) => console.error("Error fetching last dryer user:", err));
+      fetchLastDryerUser(selectedMachine);
     } else {
       setLastDryerUser(null);
     }
-  }, [selectedMachine]);
+  }, [selectedMachine, fetchLastDryerUser]);
 
   useEffect(() => {
     setIsUserApproved(Boolean(userApproved));
@@ -733,6 +746,10 @@ function Home({ userApproved = false }) {
             );
           }
           break;
+      }
+      setDryerStatusTick(Date.now());
+      if (isDryerMachine(selectedMachineRef.current)) {
+        fetchLastDryerUser(selectedMachineRef.current);
       }
     });
 
@@ -1573,7 +1590,7 @@ function Home({ userApproved = false }) {
 
       return currentActive || null;
     },
-    [usersProgramari]
+    [usersProgramari, dryerStatusTick]
   );
 
   const dryerActiveBooking = useMemo(
@@ -1739,6 +1756,7 @@ function Home({ userApproved = false }) {
       getDryerMaintenanceActive,
       maintenanceIntervals,
       value,
+      dryerStatusTick,
     ]
   );
 
@@ -1759,22 +1777,18 @@ function Home({ userApproved = false }) {
         : "Rezervă uscătorul";
 
   useEffect(() => {
-    const shouldTick =
-      isDryerSelected || Boolean(dryerActiveBooking);
-    if (!shouldTick) {
-      return undefined;
-    }
-
-    const intervalMs = dryerActiveBooking ? 5_000 : 15_000;
     const timer = setInterval(() => {
       setDryerStatusTick(Date.now());
       getProgramari();
-    }, intervalMs);
+      if (isDryerMachine(selectedMachine)) {
+        fetchLastDryerUser(selectedMachine);
+      }
+    }, 5000);
 
     return () => {
       clearInterval(timer);
     };
-  }, [isDryerSelected, dryerActiveBooking]);
+  }, [selectedMachine, fetchLastDryerUser]);
 
   useEffect(() => {
     if (isDryerSelected) {
@@ -1793,6 +1807,7 @@ function Home({ userApproved = false }) {
         return;
       }
       window.scrollTo(0, 0);
+      fetchLastDryerUser(machineName);
 
       const targetActiveBooking = getDryerActiveBooking(machineName);
       // Initialize form if editing existing booking
@@ -2334,18 +2349,22 @@ function Home({ userApproved = false }) {
               </h2>
               <div className="home__booking-summary__details">
                   <div className="home__booking-summary__detail" style={{ width: '100%', marginBottom: '10px' }}>
-                {lastDryerUser ? (
-                  <>
-                    <strong>{lastDryerUser.numeComplet} (cam. {lastDryerUser.camera})</strong>
-                    <strong>{lastDryerUser.telefon}  </strong>
-                    <span>Ultima utilizare</span>
-                  </>
-                ):
-                
-                <>   <strong>... (cam. ...)</strong>
-                    <strong>... </strong>
-                    <span>Ultima utilizare</span></>
-                }
+                    {lastDryerUser ? (
+                      <>
+                        <strong>
+                          {lastDryerUser.numeComplet || lastDryerUser.displayName || lastDryerUser.name || "Utilizator"}
+                          {lastDryerUser.camera ? ` (cam. ${lastDryerUser.camera})` : ""}
+                        </strong>
+                        {lastDryerUser.telefon ? <strong>{lastDryerUser.telefon}</strong> : null}
+                        <span>Ultima utilizare</span>
+                      </>
+                    ) : (
+                      <>
+                        <strong>... (cam. ...)</strong>
+                        <strong>... </strong>
+                        <span>Ultima utilizare</span>
+                      </>
+                    )}
                   </div>
                 <div className="home__booking-summary__detail">
                   <strong>{selectedMachine || "Uscător"}</strong>
