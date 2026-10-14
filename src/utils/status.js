@@ -17,4 +17,16 @@ export const STATUS = {
     REZERVAT: { status: "REZERVAT", by: "" },
     MENTENANTA: { status: "MENTENANTA", by: "" },
   },
+  "Uscator 1": {
+    DISPONIBIL: { status: "DISPONIBIL", by: "" },
+    OCUPAT: { status: "OCUPAT", by: "" },
+    REZERVAT: { status: "REZERVAT", by: "" },
+    MENTENANTA: { status: "MENTENANTA", by: "" },
+  },
+  "Uscator 2": {
+    DISPONIBIL: { status: "DISPONIBIL", by: "" },
+    OCUPAT: { status: "OCUPAT", by: "" },
+    REZERVAT: { status: "REZERVAT", by: "" },
+    MENTENANTA: { status: "MENTENANTA", by: "" },
+  },
 };

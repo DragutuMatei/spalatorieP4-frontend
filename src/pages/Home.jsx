@@ -23,9 +23,25 @@ dayjs.tz.setDefault("Europe/Bucharest");
 dayjs.locale("ro");
 
 const BUCURESTI_TZ = "Europe/Bucharest";
-const DRYER_MACHINE = "Uscator";
 const DRYER_MAX_HOURS = 9;
 const DRYER_SELECTION_DEBOUNCE_MS = 300;
+
+const isDryerMachine = (name) => {
+  return (
+    name === "Uscator" ||
+    name === "Uscator 1" ||
+    name === "Uscator 2" ||
+    (typeof name === "string" && name.startsWith("Uscator"))
+  );
+};
+
+const isSameDryer = (machineA, machineB) => {
+  if (!machineA || !machineB) return false;
+  if (machineA === machineB) return true;
+  const isA1 = machineA === "Uscator" || machineA === "Uscator 1";
+  const isB1 = machineB === "Uscator" || machineB === "Uscator 1";
+  return isA1 && isB1;
+};
 
 const getMaintenanceUid = (interval = {}) =>
   interval.uid || interval.id || interval.maintenanceId || interval.docId || null;
@@ -79,6 +95,8 @@ function Home({ userApproved = false }) {
     M1: false,
     M2: false,
     Uscator: false,
+    "Uscator 1": false,
+    "Uscator 2": false,
   });
   const [maintenanceIntervals, setMaintenanceIntervals] = useState([]);
   const [selectedBookingDetails, setSelectedBookingDetails] = useState(null);
@@ -90,14 +108,14 @@ function Home({ userApproved = false }) {
   const dryerValidationRef = useRef(null);
   const [dryerDurationError, setDryerDurationError] = useState(null);
   const dryerSelectionEmitRef = useRef(null);
-  const [liveDryerSelection, setLiveDryerSelection] = useState(null);
+  const [liveDryerSelections, setLiveDryerSelections] = useState({});
   const [isUserApproved, setIsUserApproved] = useState(Boolean(userApproved));
   const [lastDryerUser, setLastDryerUser] = useState(null);
   const autoClearingRef = useRef(false);
 
   useEffect(() => {
-    if (selectedMachine === "Uscator") {
-      AXIOS.get("/api/programare/uscator/last")
+    if (isDryerMachine(selectedMachine)) {
+      AXIOS.get(`/api/programare/uscator/last?machine=${encodeURIComponent(selectedMachine)}`)
         .then((res) => {
           if (res.data.success && res.data.booking) {
             setLastDryerUser(res.data.booking.user);
@@ -127,11 +145,14 @@ function Home({ userApproved = false }) {
   const now = dayjs().tz();
   const selectedDate = dayjs(value).tz();
   const isSelectedDateToday = selectedDate.isSame(now, "day");
-  const isDryerSelected = selectedMachine === DRYER_MACHINE;
+  const isDryerSelected = isDryerMachine(selectedMachine);
   const isWashingMachineSelected = washingMachines.some(
     (machine) => machine.name === selectedMachine
   );
-  const dryerEnabled = realStates[DRYER_MACHINE];
+  const dryerEnabled = Boolean(
+    realStates[selectedMachine] ||
+    (selectedMachine === "Uscator 1" && realStates["Uscator"])
+  );
   const todayBucharest = useMemo(() => dayjs().tz(BUCURESTI_TZ).startOf("day"), []);
 
   const buildHours = useCallback(() => {
@@ -158,6 +179,12 @@ function Home({ userApproved = false }) {
           Uscator: realStates["Uscator"]
             ? { ...STATUS["Uscator"].DISPONIBIL }
             : { ...STATUS["Uscator"].MENTENANTA },
+          "Uscator 1": realStates["Uscator 1"]
+            ? { ...STATUS["Uscator 1"].DISPONIBIL }
+            : { ...STATUS["Uscator 1"].MENTENANTA },
+          "Uscator 2": realStates["Uscator 2"]
+            ? { ...STATUS["Uscator 2"].DISPONIBIL }
+            : { ...STATUS["Uscator 2"].MENTENANTA },
         },
       });
       current = current.add(30, "minute");
@@ -396,9 +423,11 @@ function Home({ userApproved = false }) {
       const rasp = await AXIOS.get("/api/settings");
       if (rasp.data.success) {
         setRealStates({
-          M1: rasp.data.settings.m1Enabled,
-          M2: rasp.data.settings.m2Enabled,
-          Uscator: rasp.data.settings.dryerEnabled,
+          M1: Boolean(rasp.data.settings.m1Enabled),
+          M2: Boolean(rasp.data.settings.m2Enabled),
+          Uscator: Boolean(rasp.data.settings.dryerEnabled),
+          "Uscator 1": Boolean(rasp.data.settings.dryerEnabled),
+          "Uscator 2": Boolean(rasp.data.settings.dryer2Enabled !== false),
         });
         setBlockPastSlotsEnabled(Boolean(rasp.data.settings.blockPastSlots));
       } else if (rasp.data.status === 404) {
@@ -406,6 +435,8 @@ function Home({ userApproved = false }) {
           M1: false,
           M2: false,
           Uscator: false,
+          "Uscator 1": false,
+          "Uscator 2": false,
         });
         setBlockPastSlotsEnabled(false);
         return;
@@ -414,6 +445,8 @@ function Home({ userApproved = false }) {
           M1: false,
           M2: false,
           Uscator: false,
+          "Uscator 1": false,
+          "Uscator 2": false,
         });
         setBlockPastSlotsEnabled(false);
         toast_error(rasp.data.message || "Eroare la incarcarea setarilor.");
@@ -424,6 +457,8 @@ function Home({ userApproved = false }) {
           M1: false,
           M2: false,
           Uscator: false,
+          "Uscator 1": false,
+          "Uscator 2": false,
         });
         setBlockPastSlotsEnabled(false);
         return;
@@ -528,6 +563,7 @@ function Home({ userApproved = false }) {
         m1Enabled,
         m2Enabled,
         dryerEnabled,
+        dryer2Enabled,
         blockPastSlots,
       } = payload;
 
@@ -545,6 +581,8 @@ function Home({ userApproved = false }) {
         M1: Boolean(m1Enabled),
         M2: Boolean(m2Enabled),
         Uscator: Boolean(dryerEnabled),
+        "Uscator 1": Boolean(dryerEnabled),
+        "Uscator 2": Boolean(dryer2Enabled !== false),
       });
       setBlockPastSlotsEnabled(Boolean(blockPastSlots));
     });
@@ -1087,7 +1125,7 @@ function Home({ userApproved = false }) {
     }
 
     return maintenanceIntervals
-      .filter((interval) => interval.machine === DRYER_MACHINE)
+      .filter((interval) => isSameDryer(interval.machine, selectedMachine))
       .flatMap((interval) => {
         const datesList = interval.dates && interval.dates.length > 0 ? interval.dates : [interval.date];
         const startTime = interval.startTime || interval.start_interval_time;
@@ -1108,7 +1146,7 @@ function Home({ userApproved = false }) {
         (interval) => interval.intervalStart.isValid() && interval.intervalEnd.isValid()
       )
       .sort((a, b) => a.intervalStart.valueOf() - b.intervalStart.valueOf());
-  }, [maintenanceIntervals]);
+  }, [maintenanceIntervals, selectedMachine]);
 
   const validateDryerDuration = useCallback(
     (hoursValue, minutesValue) => {
@@ -1315,13 +1353,14 @@ function Home({ userApproved = false }) {
         userId: user.uid,
         selection: {
           ...payload,
+          machine: selectedMachine,
           userName: user?.numeComplet || "Utilizator",
           camera: user?.camera || "?",
           updatedAt: Date.now(),
         },
       });
     },
-    [socket, user]
+    [socket, user, selectedMachine]
   );
 
   const emitCancelDryerSelection = useCallback(() => {
@@ -1337,20 +1376,15 @@ function Home({ userApproved = false }) {
       if (data.userId === user?.uid) {
         return;
       }
-      setLiveDryerSelection({ userId: data.userId, ...data.selection });
+      setLiveDryerSelections((prev) => ({
+        ...prev,
+        [data.userId]: data.selection,
+      }));
     };
 
     const handleSyncDryerSelection = (data) => {
       const selections = data?.dryerSelections || {};
-      const entries = Object.entries(selections).filter(
-        ([userId]) => userId !== user?.uid
-      );
-      if (entries.length === 0) {
-        setLiveDryerSelection(null);
-        return;
-      }
-      const [firstUserId, selection] = entries[0];
-      setLiveDryerSelection({ userId: firstUserId, ...selection });
+      setLiveDryerSelections(selections);
     };
 
     const handleCancelDryerSelection = (data) => {
@@ -1365,11 +1399,10 @@ function Home({ userApproved = false }) {
           setTimeout(() => { autoClearingRef.current = false; }, 100);
         }
 
-        setLiveDryerSelection((current) => {
-          if (current?.userId === data.userId) {
-            return null;
-          }
-          return current;
+        setLiveDryerSelections((prev) => {
+          const next = { ...prev };
+          delete next[data.userId];
+          return next;
         });
       }
     };
@@ -1389,10 +1422,26 @@ function Home({ userApproved = false }) {
     };
   }, [socket, user]);
 
+  const getOtherUserEditingDryer = useCallback(
+    (machineName) => {
+      const entries = Object.entries(liveDryerSelections).filter(
+        ([uid, sel]) =>
+          uid !== user?.uid && isSameDryer(sel?.machine || "Uscator 1", machineName)
+      );
+      if (entries.length === 0) return null;
+      return { userId: entries[0][0], ...entries[0][1] };
+    },
+    [liveDryerSelections, user]
+  );
+
+  const liveDryerSelection = useMemo(
+    () => getOtherUserEditingDryer(selectedMachine),
+    [getOtherUserEditingDryer, selectedMachine]
+  );
+
   const isAnotherUserEditingDryer = useMemo(() => {
-    if (!liveDryerSelection) return false;
-    return liveDryerSelection.userId !== user?.uid;
-  }, [liveDryerSelection, user]);
+    return Boolean(liveDryerSelection);
+  }, [liveDryerSelection]);
 
   useEffect(() => {
     if (!isDryerSelected) {
@@ -1430,58 +1479,56 @@ function Home({ userApproved = false }) {
     dryerDurationError,
   ]);
 
-  const dryerActiveBooking = useMemo(() => {
-    const allActiveDryerBookings = usersProgramari
-      .filter((booking) => booking.machine === DRYER_MACHINE)
-      .filter((booking) => booking.active?.status === true)
-      .map((booking) => {
-        let start, end;
+  const getDryerActiveBooking = useCallback(
+    (machineName) => {
+      const allActiveDryerBookings = usersProgramari
+        .filter((booking) => isSameDryer(booking.machine, machineName))
+        .filter((booking) => booking.active?.status === true)
+        .map((booking) => {
+          let start, end;
 
-        if (booking.startsAt && booking.endsAt) {
-          start = dayjs(booking.startsAt).tz(BUCURESTI_TZ);
-          end = dayjs(booking.endsAt).tz(BUCURESTI_TZ);
-        } else {
-          start = toBucharestDayjs(
-            `${booking.date} ${booking.start_interval_time}`
-          );
-          end = toBucharestDayjs(
-            `${booking.date} ${booking.final_interval_time}`
-          );
-        }
+          if (booking.startsAt && booking.endsAt) {
+            start = dayjs(booking.startsAt).tz(BUCURESTI_TZ);
+            end = dayjs(booking.endsAt).tz(BUCURESTI_TZ);
+          } else {
+            start = toBucharestDayjs(
+              `${booking.date} ${booking.start_interval_time}`
+            );
+            end = toBucharestDayjs(
+              `${booking.date} ${booking.final_interval_time}`
+            );
+          }
 
-        return {
-          ...booking,
-          startsAt: start,
-          endsAt: end,
-        };
-      })
-      .filter((booking) => booking.startsAt.isValid() && booking.endsAt.isValid());
+          return {
+            ...booking,
+            startsAt: start,
+            endsAt: end,
+          };
+        })
+        .filter((booking) => booking.startsAt.isValid() && booking.endsAt.isValid());
 
-    if (allActiveDryerBookings.length === 0) {
-      return null;
-    }
+      if (allActiveDryerBookings.length === 0) {
+        return null;
+      }
 
-    const nowBucharest = dayjs().tz(BUCURESTI_TZ);
+      const nowBucharest = dayjs().tz(BUCURESTI_TZ);
 
-    // Find the booking where NOW is between startsAt and endsAt
-    const currentActive = allActiveDryerBookings.find(
-      (booking) =>
-        nowBucharest.isSameOrAfter(booking.startsAt) &&
-        nowBucharest.isBefore(booking.endsAt)
-    );
+      // Find the booking where NOW is between startsAt and endsAt
+      const currentActive = allActiveDryerBookings.find(
+        (booking) =>
+          nowBucharest.isSameOrAfter(booking.startsAt) &&
+          nowBucharest.isBefore(booking.endsAt)
+      );
 
-    return currentActive || null;
-  }, [usersProgramari, dryerStatusTick]);
+      return currentActive || null;
+    },
+    [usersProgramari]
+  );
 
-  const dryerRemainingMinutes = useMemo(() => {
-    if (!dryerActiveBooking || !dryerActiveBooking.endsAt) {
-      return null;
-    }
-
-    const nowBucharest = dayjs().tz(BUCURESTI_TZ);
-    const diff = dryerActiveBooking.endsAt.diff(nowBucharest, "minute");
-    return Math.max(0, diff);
-  }, [dryerActiveBooking, dryerStatusTick]);
+  const dryerActiveBooking = useMemo(
+    () => getDryerActiveBooking(selectedMachine),
+    [getDryerActiveBooking, selectedMachine, dryerStatusTick]
+  );
 
   const dryerOccupantName =
     dryerActiveBooking?.user?.numeComplet || "Utilizator necunoscut";
@@ -1490,107 +1537,159 @@ function Home({ userApproved = false }) {
     : "";
   const dryerEndsAtLabel = dryerActiveBooking?.endsAt?.format("HH:mm");
 
-  const dryerMaintenanceActive = useMemo(() => {
-    const nowBucharest = dayjs().tz(BUCURESTI_TZ);
+  const getDryerMaintenanceActive = useCallback(
+    (machineName) => {
+      const nowBucharest = dayjs().tz(BUCURESTI_TZ);
 
-    return maintenanceIntervals.some((interval) => {
-      if (interval.machine !== DRYER_MACHINE) {
+      return maintenanceIntervals.some((interval) => {
+        if (!isSameDryer(interval.machine, machineName)) {
+          return false;
+        }
+
+        const datesList =
+          interval.dates && interval.dates.length > 0
+            ? interval.dates
+            : [interval.date];
+        const todayFormatted = nowBucharest.format("DD/MM/YYYY");
+
+        if (!datesList.includes(todayFormatted)) {
+          return false;
+        }
+
+        const activeDateStr = todayFormatted;
+        const startTime = interval.startTime || interval.start_interval_time;
+        const endTime = interval.endTime || interval.final_interval_time;
+
+        const startDayjs = startTime
+          ? toBucharestDayjs(`${activeDateStr} ${startTime}`)
+          : dayjs(NaN);
+        const endDayjs = endTime
+          ? toBucharestDayjs(`${activeDateStr} ${endTime}`)
+          : dayjs(NaN);
+
+        if (!startDayjs.isValid() || !endDayjs.isValid()) {
+          return false;
+        }
+
+        return nowBucharest.isBetween(startDayjs, endDayjs, null, "[]");
+      });
+    },
+    [maintenanceIntervals]
+  );
+
+  const dryerMaintenanceActive = useMemo(
+    () => getDryerMaintenanceActive(selectedMachine),
+    [getDryerMaintenanceActive, selectedMachine, dryerStatusTick]
+  );
+
+  const getDryerSelectable = useCallback(
+    (machineName) => {
+      const isEnabled = Boolean(
+        realStates[machineName] ||
+          (machineName === "Uscator 1" && realStates["Uscator"])
+      );
+      if (!isEnabled) {
         return false;
       }
-
-      const datesList = interval.dates && interval.dates.length > 0 ? interval.dates : [interval.date];
-      const todayFormatted = nowBucharest.format("DD/MM/YYYY");
-
-      if (!datesList.includes(todayFormatted)) {
+      if (getDryerMaintenanceActive(machineName)) {
         return false;
       }
-
-      const activeDateStr = todayFormatted;
-      const startTime = interval.startTime || interval.start_interval_time;
-      const endTime = interval.endTime || interval.final_interval_time;
-
-      const startDayjs = startTime
-        ? toBucharestDayjs(`${activeDateStr} ${startTime}`)
-        : dayjs(NaN);
-      const endDayjs = endTime
-        ? toBucharestDayjs(`${activeDateStr} ${endTime}`)
-        : dayjs(NaN);
-
-      if (!startDayjs.isValid() || !endDayjs.isValid()) {
+      const active = getDryerActiveBooking(machineName);
+      if (active) {
+        if (user?.uid && active.user?.uid === user.uid) {
+          return true;
+        }
         return false;
       }
-
-      return nowBucharest.isBetween(startDayjs, endDayjs, null, "[]");
-    });
-  }, [maintenanceIntervals, dryerStatusTick]);
-
-  const dryerSelectable = useMemo(() => {
-    if (!dryerEnabled) {
-      return false;
-    }
-    if (dryerMaintenanceActive) {
-      return false;
-    }
-    if (dryerActiveBooking) {
-      if (user?.uid && dryerActiveBooking.user?.uid === user.uid) {
-        return true;
+      if (getOtherUserEditingDryer(machineName)) {
+        return false;
       }
-      return false;
-    }
-    if (isAnotherUserEditingDryer) {
-      return false;
-    }
-    return true;
-  }, [
-    dryerEnabled,
-    dryerMaintenanceActive,
-    dryerActiveBooking,
-    isAnotherUserEditingDryer,
-    user,
-  ]);
+      return true;
+    },
+    [
+      realStates,
+      getDryerMaintenanceActive,
+      getDryerActiveBooking,
+      getOtherUserEditingDryer,
+      user,
+    ]
+  );
 
-  const dryerTileStatus = useMemo(() => {
-    if (dryerActiveBooking) {
-      const until = dryerEndsAtLabel ? ` până la ${dryerEndsAtLabel}` : "";
-      return `Ocupat de ${dryerOccupantName}${dryerOccupantRoom}${until}`;
-    }
-    if (isAnotherUserEditingDryer && liveDryerSelection) {
-      return `Selectat de ${liveDryerSelection.userName || "Utilizator"} (cam. ${liveDryerSelection.camera || "?"
+  const getDryerTileStatus = useCallback(
+    (machineName) => {
+      const active = getDryerActiveBooking(machineName);
+      if (active) {
+        const occupantName = active.user?.numeComplet || "Utilizator necunoscut";
+        const occupantRoom = active.user?.camera
+          ? ` (cam. ${active.user.camera})`
+          : "";
+        const until = active.endsAt ? ` până la ${active.endsAt.format("HH:mm")}` : "";
+        return `Ocupat de ${occupantName}${occupantRoom}${until}`;
+      }
+      const otherEditing = getOtherUserEditingDryer(machineName);
+      if (otherEditing) {
+        return `Selectat de ${otherEditing.userName || "Utilizator"} (cam. ${
+          otherEditing.camera || "?"
         })`;
-    }
-    if (!dryerEnabled) {
-      return "Uscător indisponibil";
-    }
-    if (dryerMaintenanceActive) {
-      return "Mentenanță în curs";
-    }
+      }
+      const isEnabled = Boolean(
+        realStates[machineName] ||
+          (machineName === "Uscator 1" && realStates["Uscator"])
+      );
+      if (!isEnabled) {
+        return "Uscător indisponibil";
+      }
+      if (getDryerMaintenanceActive(machineName)) {
+        return "Mentenanță în curs";
+      }
 
-    const selectedDay = dayjs(value).tz(BUCURESTI_TZ).format("DD/MM/YYYY");
-    const maintenanceToday = upcomingDryerMaintenance.filter(
-      (interval) => interval.date === selectedDay
-    );
+      const selectedDay = dayjs(value).tz(BUCURESTI_TZ).format("DD/MM/YYYY");
+      const maintenanceToday = maintenanceIntervals
+        .filter((interval) => isSameDryer(interval.machine, machineName))
+        .flatMap((interval) => {
+          const datesList =
+            interval.dates && interval.dates.length > 0
+              ? interval.dates
+              : [interval.date];
+          const startTime = interval.startTime || interval.start_interval_time;
+          const endTime = interval.endTime || interval.final_interval_time;
+          return datesList.map((d) => ({
+            ...interval,
+            date: d,
+            intervalStart: startTime
+              ? toBucharestDayjs(`${d} ${startTime}`)
+              : dayjs(NaN),
+            intervalEnd: endTime
+              ? toBucharestDayjs(`${d} ${endTime}`)
+              : dayjs(NaN),
+          }));
+        })
+        .filter(
+          (interval) =>
+            interval.intervalStart.isValid() &&
+            interval.intervalEnd.isValid() &&
+            interval.date === selectedDay
+        )
+        .sort((a, b) => a.intervalStart.valueOf() - b.intervalStart.valueOf());
 
-    if (maintenanceToday.length) {
-      const nextInterval = maintenanceToday[0];
-      const startLabel = nextInterval.intervalStart.format("HH:mm");
-      const endLabel = nextInterval.intervalEnd.format("HH:mm");
-      return `Mentenanță programată ${startLabel}-${endLabel}`;
-    }
+      if (maintenanceToday.length) {
+        const nextInterval = maintenanceToday[0];
+        const startLabel = nextInterval.intervalStart.format("HH:mm");
+        const endLabel = nextInterval.intervalEnd.format("HH:mm");
+        return `Mentenanță programată ${startLabel}-${endLabel}`;
+      }
 
-
-    return "Disponibil";
-  }, [
-    dryerEnabled,
-    dryerMaintenanceActive,
-    dryerActiveBooking,
-    dryerEndsAtLabel,
-    dryerOccupantName,
-    dryerOccupantRoom,
-    isAnotherUserEditingDryer,
-    liveDryerSelection,
-    upcomingDryerMaintenance,
-    value,
-  ]);
+      return "Disponibil";
+    },
+    [
+      getDryerActiveBooking,
+      getOtherUserEditingDryer,
+      realStates,
+      getDryerMaintenanceActive,
+      maintenanceIntervals,
+      value,
+    ]
+  );
 
   const canSubmitDryer =
     !dryerSubmitting &&
@@ -1610,7 +1709,7 @@ function Home({ userApproved = false }) {
 
   useEffect(() => {
     const shouldTick =
-      selectedMachine === DRYER_MACHINE || Boolean(dryerActiveBooking);
+      isDryerSelected || Boolean(dryerActiveBooking);
     if (!shouldTick) {
       return undefined;
     }
@@ -1624,7 +1723,7 @@ function Home({ userApproved = false }) {
     return () => {
       clearInterval(timer);
     };
-  }, [selectedMachine, dryerActiveBooking]);
+  }, [isDryerSelected, dryerActiveBooking]);
 
   useEffect(() => {
     if (isDryerSelected) {
@@ -1635,22 +1734,21 @@ function Home({ userApproved = false }) {
   }, [isDryerSelected]);
 
   const handleMachineSelect = (machineName) => {
-    const isDryer = machineName === DRYER_MACHINE;
+    const isDryer = isDryerMachine(machineName);
 
     if (isDryer) {
-      if (!dryerSelectable) {
-        toast_warn("Uscătorul nu este disponibil momentan.");
+      if (!getDryerSelectable(machineName)) {
+        toast_warn(`${machineName} nu este disponibil momentan.`);
         return;
       }
       window.scrollTo(0, 0);
 
+      const targetActiveBooking = getDryerActiveBooking(machineName);
       // Initialize form if editing existing booking
-      if (dryerActiveBooking && dryerActiveBooking.user?.uid === user?.uid) {
+      if (targetActiveBooking && targetActiveBooking.user?.uid === user?.uid) {
         setDryerDurationHours("");
         setDryerDurationMinutes("");
-        // Logic to show current duration or remaining? 
-        // Let's show the TOTAL duration so they can extend or shorten it.
-        const totalMinutes = dryerActiveBooking.duration || 0;
+        const totalMinutes = targetActiveBooking.duration || 0;
         const h = Math.floor(totalMinutes / 60);
         const m = totalMinutes % 60;
         setDryerDurationHours(h.toString());
@@ -1659,9 +1757,10 @@ function Home({ userApproved = false }) {
         setValue(todayBucharest.toDate());
         setDryerDurationHours("");
         setDryerDurationMinutes("");
+        setDryerDurationError(null);
       }
 
-      setSelectedMachine(DRYER_MACHINE);
+      setSelectedMachine(machineName);
       setProgramari([]);
       cancelTempReservation();
       return;
@@ -1673,16 +1772,17 @@ function Home({ userApproved = false }) {
       return;
     }
 
-    if (selectedMachine === DRYER_MACHINE) {
+    if (isDryerSelected) {
       cancelTempReservation();
       setProgramari([]);
+      emitCancelDryerSelection();
     }
 
     setSelectedMachine(machineName);
   };
 
   const handleCancelDryerSelection = () => {
-    if (selectedMachine !== DRYER_MACHINE) {
+    if (!isDryerSelected) {
       return;
     }
 
@@ -1716,7 +1816,7 @@ function Home({ userApproved = false }) {
   const selectDate = async (e) => {
     const pickedDate = dayjs(e?.toDate?.() || e).tz(BUCURESTI_TZ);
 
-    if (selectedMachine === DRYER_MACHINE) {
+    if (isDryerSelected) {
       if (!pickedDate.isSame(todayBucharest, "day")) {
         toast_warn("Rezervările pentru uscător se pot face doar pentru ziua de azi.");
         setValue(todayBucharest.toDate());
@@ -1797,13 +1897,13 @@ function Home({ userApproved = false }) {
       return;
     }
 
-    if (!realStates[DRYER_MACHINE]) {
-      toast_error("Uscătorul este indisponibil momentan.");
+    if (!dryerEnabled) {
+      toast_error(`${selectedMachine} este indisponibil momentan.`);
       return;
     }
 
     if (dryerMaintenanceActive) {
-      toast_error("Uscătorul este în mentenanță în prezent.");
+      toast_error(`${selectedMachine} este în mentenanță în prezent.`);
       return;
     }
 
@@ -1830,7 +1930,7 @@ function Home({ userApproved = false }) {
     const dryerEnd = dryerStart.add(dryerDurationTotalMinutes, "minute");
 
     if (dryerActiveBooking && dryerActiveBooking.startsAt) {
-      toast_error("Există deja o rezervare activă pentru uscător.");
+      toast_error(`Există deja o rezervare activă pentru ${selectedMachine}.`);
       return;
     }
 
@@ -1839,7 +1939,7 @@ function Home({ userApproved = false }) {
       date: bookingDate.format("DD/MM/YYYY"),
       start_interval_time: dryerStart.format("HH:mm"),
       final_interval_time: dryerEnd.format("HH:mm"),
-      machine: DRYER_MACHINE,
+      machine: selectedMachine,
       durationMinutes: dryerDurationTotalMinutes,
       startTimestamp: dryerStart.valueOf(),
       endTimestamp: dryerEnd.valueOf(),
@@ -1859,7 +1959,7 @@ function Home({ userApproved = false }) {
       });
 
       if (rasp.data.success) {
-        toast_success("Rezervarea uscătorului a fost creată cu succes!");
+        toast_success(`Rezervarea pentru ${selectedMachine} a fost creată cu succes!`);
         setSelectedMachine("");
         setDryerDurationHours(1);
         setDryerDurationMinutes("");
@@ -2156,8 +2256,8 @@ function Home({ userApproved = false }) {
             <div className="home__booking-summary">
               <h2>
                 {dryerActiveBooking && dryerActiveBooking.user?.uid === user?.uid
-                  ? "Modificare rezervare uscător"
-                  : "Rezervarea uscătorului"}
+                  ? `Modificare rezervare ${selectedMachine}`
+                  : `Rezervarea ${selectedMachine}`}
               </h2>
               <div className="home__booking-summary__details">
                   <div className="home__booking-summary__detail" style={{ width: '100%', marginBottom: '10px' }}>
@@ -2175,7 +2275,7 @@ function Home({ userApproved = false }) {
                 }
                   </div>
                 <div className="home__booking-summary__detail">
-                  <strong>Uscător</strong>
+                  <strong>{selectedMachine || "Uscător"}</strong>
                   <span>Echipament selectat</span>
                 </div>
                 <div className="home__booking-summary__detail home__booking-summary__detail--inputs">
@@ -2271,7 +2371,7 @@ function Home({ userApproved = false }) {
                   </p>
                 )}
               <p className="mt-2" style={{ fontSize: "0.875rem" }}>
-                Uscătorul se eliberează automat după trecerea duratei selectate.
+                {selectedMachine || "Uscătorul"} se eliberează automat după trecerea duratei selectate.
               </p>
             </div>
           )}
@@ -2318,26 +2418,39 @@ function Home({ userApproved = false }) {
               <div className="card">
                 <h3>Selectează mașina</h3>
                 <div className="home__machine-selector__grid">
-                  {[...washingMachines, { id: "uscator", name: DRYER_MACHINE }].map(
+                  {[
+                    ...washingMachines,
+                    { id: "uscator1", name: "Uscator 1" },
+                    { id: "uscator2", name: "Uscator 2" },
+                  ].map(
                     (m) => {
-                      const isDryer = m.name === DRYER_MACHINE;
+                      const isDryer = isDryerMachine(m.name);
                       let machineStatus = "Indisponibil";
                       let isDisabled = false;
                       let isOccupiedByOther = false;
 
                       if (isDryer) {
-                        machineStatus = dryerTileStatus;
-                        // Use !dryerSelectable logic, but specifically check if it's because it's occupied by someone else
-                        if (dryerActiveBooking) {
-                          if (!user || dryerActiveBooking.user?.uid !== user.uid) {
+                        machineStatus = getDryerTileStatus(m.name);
+                        const activeBooking = getDryerActiveBooking(m.name);
+                        const isOtherEditing = Boolean(
+                          getOtherUserEditingDryer(m.name)
+                        );
+                        const isSelectable = getDryerSelectable(m.name);
+                        const isEnabled = Boolean(
+                          realStates[m.name] ||
+                          (m.name === "Uscator 1" && realStates["Uscator"])
+                        );
+
+                        if (activeBooking) {
+                          if (!user || activeBooking.user?.uid !== user.uid) {
                             isOccupiedByOther = true;
                           }
-                        } else if (isAnotherUserEditingDryer) {
+                        } else if (isOtherEditing) {
                           isOccupiedByOther = true;
                         }
 
-                        isDisabled = !dryerSelectable && !dryerActiveBooking;
-                        if (!dryerEnabled) isDisabled = true;
+                        isDisabled = !isSelectable && !activeBooking;
+                        if (!isEnabled) isDisabled = true;
                       } else {
                         const machineEnabled = Boolean(realStates[m.name]);
                         isDisabled = !machineEnabled;

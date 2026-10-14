@@ -44,9 +44,10 @@ dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 
 const COLORS = {
-  M1: "#0088FE",     // Blue
-  M2: "#00C49F",     // Green
-  Uscator: "#FFBB28" // Yellow/Orange
+  M1: "#0088FE",      // Blue
+  M2: "#00C49F",      // Green
+  Uscator: "#FFBB28", // Yellow/Orange
+  Uscator2: "#FF8042" // Orange
 };
 
 // Helper function to calculate duration between two time strings
@@ -187,6 +188,7 @@ function Admin() {
   const [settings, setSettings] = useState({
     uid: "",
     dryerEnabled: true,
+    dryer2Enabled: true,
     m1Enabled: true,
     m2Enabled: true,
     blockPastSlots: false,
@@ -277,13 +279,13 @@ function Admin() {
     // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
     // We want to display Mon -> Sun.
     const stats = [
-      { name: "Lun", dayIndex: 1, M1: 0, M2: 0, Uscator: 0, total: 0 },
-      { name: "Mar", dayIndex: 2, M1: 0, M2: 0, Uscator: 0, total: 0 },
-      { name: "Mie", dayIndex: 3, M1: 0, M2: 0, Uscator: 0, total: 0 },
-      { name: "Joi", dayIndex: 4, M1: 0, M2: 0, Uscator: 0, total: 0 },
-      { name: "Vin", dayIndex: 5, M1: 0, M2: 0, Uscator: 0, total: 0 },
-      { name: "Sam", dayIndex: 6, M1: 0, M2: 0, Uscator: 0, total: 0 },
-      { name: "Dum", dayIndex: 0, M1: 0, M2: 0, Uscator: 0, total: 0 },
+      { name: "Lun", dayIndex: 1, M1: 0, M2: 0, Uscator: 0, Uscator2: 0, total: 0 },
+      { name: "Mar", dayIndex: 2, M1: 0, M2: 0, Uscator: 0, Uscator2: 0, total: 0 },
+      { name: "Mie", dayIndex: 3, M1: 0, M2: 0, Uscator: 0, Uscator2: 0, total: 0 },
+      { name: "Joi", dayIndex: 4, M1: 0, M2: 0, Uscator: 0, Uscator2: 0, total: 0 },
+      { name: "Vin", dayIndex: 5, M1: 0, M2: 0, Uscator: 0, Uscator2: 0, total: 0 },
+      { name: "Sam", dayIndex: 6, M1: 0, M2: 0, Uscator: 0, Uscator2: 0, total: 0 },
+      { name: "Dum", dayIndex: 0, M1: 0, M2: 0, Uscator: 0, Uscator2: 0, total: 0 },
     ];
 
     bookings.forEach((booking) => {
@@ -311,7 +313,8 @@ function Admin() {
         statObj.total += 1;
         if (booking.machine === "Masina 1" || booking.machine === "M1") statObj.M1 += 1;
         else if (booking.machine === "Masina 2" || booking.machine === "M2") statObj.M2 += 1;
-        else if (booking.machine === "Uscator" || booking.machine === "Uscător") statObj.Uscator += 1;
+        else if (booking.machine === "Uscator 2") statObj.Uscator2 += 1;
+        else if (booking.machine === "Uscator" || booking.machine === "Uscător" || booking.machine === "Uscator 1") statObj.Uscator += 1;
       }
     });
 
@@ -341,7 +344,7 @@ function Admin() {
       // --------------------
 
       if (!userStats[uid]) {
-        userStats[uid] = { name, M1: 0, M2: 0, Uscator: 0, totalMinutes: 0 };
+        userStats[uid] = { name, M1: 0, M2: 0, Uscator: 0, Uscator2: 0, totalMinutes: 0 };
       }
 
       // Calculate duration
@@ -360,7 +363,8 @@ function Admin() {
 
       if (booking.machine === "Masina 1" || booking.machine === "M1") userStats[uid].M1 += duration;
       else if (booking.machine === "Masina 2" || booking.machine === "M2") userStats[uid].M2 += duration;
-      else if (booking.machine === "Uscator" || booking.machine === "Uscător") userStats[uid].Uscator += duration;
+      else if (booking.machine === "Uscator 2") userStats[uid].Uscator2 += duration;
+      else if (booking.machine === "Uscator" || booking.machine === "Uscător" || booking.machine === "Uscator 1") userStats[uid].Uscator += duration;
     });
 
     return Object.values(userStats)
@@ -1353,7 +1357,7 @@ function Admin() {
                     <circle cx="12" cy="12" r="3" />
                     <path d="M12 1v6m0 6v6" />
                   </svg>
-                  Uscător
+                  Uscător 1
                   <span className="status">
                     {settings.dryerEnabled ? "Activat" : "Dezactivat"}
                   </span>
@@ -1363,6 +1367,26 @@ function Admin() {
                     }`}
                   onClick={() =>
                     saveSettings("dryerEnabled", !settings.dryerEnabled)
+                  }
+                />
+              </div>
+
+              <div className="admin__settings-item">
+                <div className="label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M12 1v6m0 6v6" />
+                  </svg>
+                  Uscător 2
+                  <span className="status">
+                    {settings.dryer2Enabled ? "Activat" : "Dezactivat"}
+                  </span>
+                </div>
+                <div
+                  className={`toggle ${settings.dryer2Enabled ? "toggle--active" : ""
+                    }`}
+                  onClick={() =>
+                    saveSettings("dryer2Enabled", !settings.dryer2Enabled)
                   }
                 />
               </div>
@@ -1446,7 +1470,8 @@ function Admin() {
                       <Legend iconType="circle" />
                       <Bar dataKey="M1" stackId="a" fill={COLORS.M1} name="Masina 1" radius={[0, 0, 4, 4]} />
                       <Bar dataKey="M2" stackId="a" fill={COLORS.M2} name="Masina 2" />
-                      <Bar dataKey="Uscator" stackId="a" fill={COLORS.Uscator} name="Uscător" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="Uscator" stackId="a" fill={COLORS.Uscator} name="Uscător 1" />
+                      <Bar dataKey="Uscator2" stackId="a" fill={COLORS.Uscator2} name="Uscător 2" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -1479,7 +1504,8 @@ function Admin() {
                       <Legend iconType="circle" />
                       <Bar dataKey="M1" stackId="a" fill={COLORS.M1} name="M1 (min)" />
                       <Bar dataKey="M2" stackId="a" fill={COLORS.M2} name="M2 (min)" />
-                      <Bar dataKey="Uscator" stackId="a" fill={COLORS.Uscator} name="Uscător (min)" radius={[0, 4, 4, 0]} />
+                      <Bar dataKey="Uscator" stackId="a" fill={COLORS.Uscator} name="Uscător 1 (min)" />
+                      <Bar dataKey="Uscator2" stackId="a" fill={COLORS.Uscator2} name="Uscător 2 (min)" radius={[0, 4, 4, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -1630,7 +1656,8 @@ function Admin() {
                     <option value="">Selectează mașina</option>
                     <option value="M1">Mașina M1</option>
                     <option value="M2">Mașina M2</option>
-                    <option value="Uscator">Uscător</option>
+                    <option value="Uscator 1">Uscător 1</option>
+                    <option value="Uscator 2">Uscător 2</option>
                   </select>
                 </div>
               </div>

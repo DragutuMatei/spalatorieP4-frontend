@@ -431,7 +431,8 @@ END:VCALENDAR
                     <div key={pro.uid} className="mybooks__card">
                       <div className="mybooks__card-header">
                         <h3>
-                          {pro.machine != "Uscator" && "Mașina"} {pro.machine}
+                          {!pro.machine?.startsWith("Uscator") && "Mașina "}
+                          {pro.machine}
                         </h3>
                         <span
                           className={`badge badge--${
