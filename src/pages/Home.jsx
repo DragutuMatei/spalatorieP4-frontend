@@ -27,20 +27,34 @@ const DRYER_MAX_HOURS = 9;
 const DRYER_SELECTION_DEBOUNCE_MS = 300;
 
 const isDryerMachine = (name) => {
+  if (!name || typeof name !== "string") return false;
+  const lower = name.trim().toLowerCase();
   return (
-    name === "Uscator" ||
-    name === "Uscator 1" ||
-    name === "Uscator 2" ||
-    (typeof name === "string" && name.startsWith("Uscator"))
+    lower === "uscator" ||
+    lower === "uscator 1" ||
+    lower === "uscator1" ||
+    lower === "uscator 2" ||
+    lower === "uscator2" ||
+    lower.startsWith("uscator")
   );
+};
+
+const normalizeMachineName = (name) => {
+  if (!name || typeof name !== "string") return "";
+  const trimmed = name.trim();
+  const lower = trimmed.toLowerCase();
+  if (lower === "uscator" || lower === "uscator 1" || lower === "uscator1") {
+    return "Uscator 1";
+  }
+  if (lower === "uscator 2" || lower === "uscator2") {
+    return "Uscator 2";
+  }
+  return trimmed;
 };
 
 const isSameDryer = (machineA, machineB) => {
   if (!machineA || !machineB) return false;
-  if (machineA === machineB) return true;
-  const isA1 = machineA === "Uscator" || machineA === "Uscator 1";
-  const isB1 = machineB === "Uscator" || machineB === "Uscator 1";
-  return isA1 && isB1;
+  return normalizeMachineName(machineA) === normalizeMachineName(machineB);
 };
 
 const getMaintenanceUid = (interval = {}) =>
@@ -59,21 +73,46 @@ const toBucharestDayjs = (value) => {
     return value.tz(BUCURESTI_TZ);
   }
 
+  if (typeof value === "object") {
+    const seconds = value._seconds ?? value.seconds;
+    if (typeof seconds === "number") {
+      const nanos = value._nanoseconds ?? value.nanoseconds ?? 0;
+      const parsed = dayjs
+        .unix(seconds)
+        .add(Math.floor(nanos / 1_000_000), "millisecond")
+        .tz(BUCURESTI_TZ);
+      return parsed.isValid() ? parsed : dayjs(NaN);
+    }
+    if (typeof value.toDate === "function") {
+      const parsed = dayjs(value.toDate()).tz(BUCURESTI_TZ);
+      return parsed.isValid() ? parsed : dayjs(NaN);
+    }
+  }
+
   if (typeof value === "string") {
-    if (value.includes("T")) {
-      const parsed = dayjs(value);
+    const trimmed = value.trim();
+    if (trimmed.includes("T")) {
+      const parsed = dayjs(trimmed);
       return parsed.isValid() ? parsed.tz(BUCURESTI_TZ) : dayjs(NaN);
     }
 
-    if (value.includes(" ")) {
-      const parsed = dayjs.tz(value, "DD/MM/YYYY HH:mm", BUCURESTI_TZ);
-      return parsed.isValid() ? parsed : dayjs(NaN);
+    if (trimmed.includes(" ")) {
+      const parsed = dayjs.tz(trimmed, "DD/MM/YYYY HH:mm", BUCURESTI_TZ);
+      if (parsed.isValid()) return parsed;
     }
 
-    if (value.includes("/")) {
-      const parsed = dayjs.tz(value, "DD/MM/YYYY", BUCURESTI_TZ);
-      return parsed.isValid() ? parsed : dayjs(NaN);
+    if (trimmed.includes("/")) {
+      const parsed = dayjs.tz(trimmed, "DD/MM/YYYY", BUCURESTI_TZ);
+      if (parsed.isValid()) return parsed;
     }
+
+    if (trimmed.includes("-")) {
+      const parsed = dayjs.tz(trimmed, "YYYY-MM-DD", BUCURESTI_TZ);
+      if (parsed.isValid()) return parsed;
+    }
+
+    const parsed = dayjs(trimmed);
+    return parsed.isValid() ? parsed.tz(BUCURESTI_TZ) : dayjs(NaN);
   }
 
   const parsed = dayjs(value);
@@ -360,23 +399,33 @@ function Home({ userApproved = false }) {
   const closeBookingModal = () => setSelectedBookingDetails(null);
 
   const getProgramari = useCallback(async (dateStr) => {
-    if (!dateStr) return;
+    const targetDateStr = dateStr || dayjs(value).format("DD/MM/YYYY");
+    if (!targetDateStr) return;
 
     setLoading(true);
     try {
       // Fetch only for selected date
-      const rasp = await AXIOS.get(`/api/programare?date=${dateStr}`);
+      const rasp = await AXIOS.get(`/api/programare?date=${targetDateStr}`);
       if (rasp.data.success) {
-        const validProgramari = (rasp.data.programari || []).filter(
-          (pr) =>
-            pr.active &&
-            pr.active.status === true &&
-            pr.date &&
-            pr.start_interval_time &&
-            pr.final_interval_time &&
-            pr.machine &&
-            pr.user
-        );
+        const validProgramari = (rasp.data.programari || [])
+          .filter((pr) => {
+            const isNotCancelled = !pr.active || pr.active.status !== false;
+            return (
+              isNotCancelled &&
+              pr.date &&
+              pr.start_interval_time &&
+              pr.final_interval_time &&
+              pr.machine &&
+              pr.user
+            );
+          })
+          .map((pr) => ({
+            ...pr,
+            active:
+              !pr.active || typeof pr.active !== "object"
+                ? { status: pr.active !== false, message: "Programare activă" }
+                : { ...pr.active, status: pr.active.status !== false },
+          }));
         setUsersProgramari(validProgramari);
       } else if (rasp.data.status === 404) {
         setUsersProgramari([]);
@@ -395,7 +444,7 @@ function Home({ userApproved = false }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [value]);
 
   const getTempReservations = async () => {
     try {
@@ -1483,20 +1532,22 @@ function Home({ userApproved = false }) {
     (machineName) => {
       const allActiveDryerBookings = usersProgramari
         .filter((booking) => isSameDryer(booking.machine, machineName))
-        .filter((booking) => booking.active?.status === true)
+        .filter((booking) => {
+          if (!booking.active) return true;
+          return booking.active.status !== false;
+        })
         .map((booking) => {
-          let start, end;
+          let start = toBucharestDayjs(booking.startsAt ?? booking.startTimestamp);
+          let end = toBucharestDayjs(booking.endsAt ?? booking.endTimestamp);
 
-          if (booking.startsAt && booking.endsAt) {
-            start = dayjs(booking.startsAt).tz(BUCURESTI_TZ);
-            end = dayjs(booking.endsAt).tz(BUCURESTI_TZ);
-          } else {
-            start = toBucharestDayjs(
-              `${booking.date} ${booking.start_interval_time}`
-            );
-            end = toBucharestDayjs(
-              `${booking.date} ${booking.final_interval_time}`
-            );
+          if (!start.isValid() || !end.isValid()) {
+            const dateStr = booking.date ? toBucharestDayjs(booking.date).format("DD/MM/YYYY") : "";
+            if (dateStr && booking.start_interval_time) {
+              start = toBucharestDayjs(`${dateStr} ${booking.start_interval_time}`);
+            }
+            if (dateStr && booking.final_interval_time) {
+              end = toBucharestDayjs(`${dateStr} ${booking.final_interval_time}`);
+            }
           }
 
           return {
@@ -1516,7 +1567,7 @@ function Home({ userApproved = false }) {
       // Find the booking where NOW is between startsAt and endsAt
       const currentActive = allActiveDryerBookings.find(
         (booking) =>
-          nowBucharest.isSameOrAfter(booking.startsAt) &&
+          nowBucharest.add(2, "minute").isSameOrAfter(booking.startsAt) &&
           nowBucharest.isBefore(booking.endsAt)
       );
 
@@ -1936,6 +1987,11 @@ function Home({ userApproved = false }) {
 
     const payload = {
       createdAt: dayjs().valueOf(),
+      active: {
+        status: true,
+        message: "Program uscător activ",
+        startedAt: new Date(),
+      },
       date: bookingDate.format("DD/MM/YYYY"),
       start_interval_time: dryerStart.format("HH:mm"),
       final_interval_time: dryerEnd.format("HH:mm"),
@@ -1960,12 +2016,29 @@ function Home({ userApproved = false }) {
 
       if (rasp.data.success) {
         toast_success(`Rezervarea pentru ${selectedMachine} a fost creată cu succes!`);
+        if (rasp.data.programare) {
+          const newBooking = {
+            ...payload,
+            ...rasp.data.programare,
+            active: {
+              status: true,
+              message: "Program uscător activ",
+            },
+          };
+          setUsersProgramari((prev) => {
+            const exists = prev.some((p) => p.uid === newBooking.uid);
+            if (exists) {
+              return prev.map((p) => (p.uid === newBooking.uid ? newBooking : p));
+            }
+            return [...prev, newBooking];
+          });
+        }
         setSelectedMachine("");
         setDryerDurationHours(1);
         setDryerDurationMinutes("");
-        setDryerDurationMinutes("");
         setDryerStatusTick(Date.now());
         emitCancelDryerSelection();
+        getProgramari(bookingDate.format("DD/MM/YYYY"));
         // setShowCadathonPopup(true);
       } else {
         toast_error(rasp.data.message || "Eroare la rezervarea uscătorului.");

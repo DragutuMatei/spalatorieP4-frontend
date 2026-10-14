@@ -160,7 +160,28 @@ function MyBooks() {
     try {
       const { data } = await AXIOS.get(`/api/programare/${user.uid}`);
       if (data.success) {
-        setProgramari(sortProgramariByCreatedAt(data.programari));
+        const normalized = (data.programari || []).map((pro) => {
+          if (!pro.active || typeof pro.active !== "object") {
+            return {
+              ...pro,
+              active: {
+                status: pro.active !== false,
+                message: pro.active === false ? "Anulată" : "Activă",
+              },
+            };
+          }
+          if (pro.active.status === undefined) {
+            return {
+              ...pro,
+              active: {
+                ...pro.active,
+                status: true,
+              },
+            };
+          }
+          return pro;
+        });
+        setProgramari(sortProgramariByCreatedAt(normalized));
       } else {
         toast_error(data.message || "Eroare la incarcarea programarilor.");
         setProgramari([]);
@@ -217,6 +238,29 @@ function MyBooks() {
       return;
     }
 
+    const normalizeBooking = (prog) => {
+      if (!prog) return prog;
+      if (!prog.active || typeof prog.active !== "object") {
+        return {
+          ...prog,
+          active: {
+            status: prog.active !== false,
+            message: prog.active === false ? "Anulată" : "Activă",
+          },
+        };
+      }
+      if (prog.active.status === undefined) {
+        return {
+          ...prog,
+          active: {
+            ...prog.active,
+            status: true,
+          },
+        };
+      }
+      return prog;
+    };
+
     const handleProgramareEvent = ({ action, programare, programareId }) => {
       const targetUid =
         programare?.user?.uid || programare?.userUid || programare?.user_id;
@@ -224,31 +268,28 @@ function MyBooks() {
       switch (action) {
         case "create":
           if (targetUid === user.uid && programare) {
+            const normalizedProg = normalizeBooking(programare);
             setProgramari((prev) => {
-              const exists = prev.some((p) => p.uid === programare.uid);
+              const exists = prev.some((p) => p.uid === normalizedProg.uid);
               if (exists) {
                 return sortProgramariByCreatedAt(
-                  prev.map((p) => (p.uid === programare.uid ? programare : p))
+                  prev.map((p) => (p.uid === normalizedProg.uid ? normalizedProg : p))
                 );
               }
-              return sortProgramariByCreatedAt([...prev, programare]);
+              return sortProgramariByCreatedAt([...prev, normalizedProg]);
             });
           }
           break;
         case "update":
           if (targetUid === user.uid && programare) {
+            const normalizedProg = normalizeBooking(programare);
             setProgramari((prev) => {
-              const exists = prev.some((p) => p.uid === programare.uid);
+              const exists = prev.some((p) => p.uid === normalizedProg.uid);
               if (!exists) {
-                return sortProgramariByCreatedAt([...prev, programare]);
-              }
-              if (programare.active && programare.active.status === false) {
-                return sortProgramariByCreatedAt(
-                  prev.map((p) => (p.uid === programare.uid ? programare : p))
-                );
+                return sortProgramariByCreatedAt([...prev, normalizedProg]);
               }
               return sortProgramariByCreatedAt(
-                prev.map((p) => (p.uid === programare.uid ? programare : p))
+                prev.map((p) => (p.uid === normalizedProg.uid ? normalizedProg : p))
               );
             });
           }
@@ -424,8 +465,9 @@ END:VCALENDAR
                   const start_in_min = h1 * 60 + m1;
                   const final_in_min = h2 * 60 + m2;
                   const durata = final_in_min - start_in_min;
-                  const isActive = pro.active && pro.active.status === true;
-                  const isCancelled = pro.active && pro.active.status === false;
+                  const isCancelled =
+                    Boolean(pro.active && (pro.active.status === false || pro.active === false));
+                  const isActive = !isCancelled;
 
                   return (
                     <div key={pro.uid} className="mybooks__card">
@@ -438,16 +480,10 @@ END:VCALENDAR
                           className={`badge badge--${
                             isActive
                               ? "success"
-                              : isCancelled
-                              ? "error"
-                              : "warning"
+                              : "error"
                           }`}
                         >
-                          {isCancelled
-                            ? "Anulată"
-                            : isActive
-                            ? "Activă"
-                            : "Necunoscută"}
+                          {isCancelled ? "Anulată" : "Activă"}
                         </span>
                       </div>
 
@@ -589,10 +625,9 @@ END:VCALENDAR
                         const start_in_min = h1 * 60 + m1;
                         const final_in_min = h2 * 60 + m2;
                         const durata = final_in_min - start_in_min;
-                        const isActive =
-                          pro.active && pro.active.status === true;
                         const isCancelled =
-                          pro.active && pro.active.status === false;
+                          Boolean(pro.active && (pro.active.status === false || pro.active === false));
+                        const isActive = !isCancelled;
 
                         return (
                           <tr
@@ -600,9 +635,7 @@ END:VCALENDAR
                             className={
                               isCancelled
                                 ? "cancelled"
-                                : isActive
-                                ? "active"
-                                : ""
+                                : "active"
                             }
                           >
                             <td>
@@ -626,7 +659,7 @@ END:VCALENDAR
                                   </svg>
                                   <span>Anulată</span>
                                 </div>
-                              ) : isActive ? (
+                              ) : (
                                 <div className="mybooks__status mybooks__status--active">
                                   <svg
                                     viewBox="0 0 24 24"
@@ -637,20 +670,6 @@ END:VCALENDAR
                                     <polyline points="9 12 11 14 15 10" />
                                   </svg>
                                   <span>Activă</span>
-                                </div>
-                              ) : (
-                                <div className="mybooks__status mybooks__status--unknown">
-                                  <svg
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                  >
-                                    <circle cx="12" cy="12" r="10" />
-                                    <path d="M9,9h0" />
-                                    <path d="M15,9h0" />
-                                    <path d="M8,15s1.5,2,4,2,4-2,4-2" />
-                                  </svg>
-                                  <span>Necunoscută</span>
                                 </div>
                               )}
                             </td>
