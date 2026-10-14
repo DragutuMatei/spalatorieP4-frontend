@@ -411,11 +411,11 @@ function Home({ userApproved = false }) {
 
   const closeBookingModal = () => setSelectedBookingDetails(null);
 
-  const getProgramari = useCallback(async (dateStr) => {
+  const getProgramari = useCallback(async (dateStr, showLoading = false) => {
     const targetDateStr = dateStr || dayjs(value).format("DD/MM/YYYY");
     if (!targetDateStr) return;
 
-    setLoading(true);
+    if (showLoading) setLoading(true);
     try {
       // Fetch only for selected date
       const rasp = await AXIOS.get(`/api/programare?date=${targetDateStr}`);
@@ -455,7 +455,7 @@ function Home({ userApproved = false }) {
       console.error("Eroare la incarcarea programarilor:", error);
       toast_error(error.message || "Eroare la incarcarea programarilor.");
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   }, [value]);
 
@@ -553,7 +553,7 @@ function Home({ userApproved = false }) {
     getSettings();
     // Use the selected date (value) for fetching
     const currentDateFormatted = dayjs(value).format("DD/MM/YYYY");
-    getProgramari(currentDateFormatted);
+    getProgramari(currentDateFormatted, true);
 
     getMaintenanceIntervals();
     // Obține rezervările temporare existente când se încarcă componenta
@@ -575,12 +575,13 @@ function Home({ userApproved = false }) {
         // Dacă rezervarea anulată este a noastră, curățăm starea locală
         if (data.userId === user?.uid) {
           autoClearingRef.current = true;
-          setProgramari([]);
-          setSelectedMachine("");
-          toast_warn("Rezervarea ta temporară a expirat din cauza inactivității.");
-          // Resetăm ref-ul după un scurt delay pentru a permite useEffect să ruleze (dacă e cazul) 
-          // dar de fapt useEffect va rula sincron după setProgramari dacă nu e batching, 
-          // sau în următorul microtask.
+          setProgramari((prevSlots) => {
+            if (data.expired && prevSlots && prevSlots.length > 0) {
+              toast_warn("Rezervarea ta temporară a expirat din cauza inactivității.");
+            }
+            return [];
+          });
+          setSelectedMachine((prev) => (!isDryerMachine(prev) ? "" : prev));
           setTimeout(() => { autoClearingRef.current = false; }, 100);
         }
 
@@ -773,7 +774,7 @@ function Home({ userApproved = false }) {
   const dateString = useMemo(() => dayjs(value).format("DD/MM/YYYY"), [value]);
 
   useEffect(() => {
-    getProgramari(dateString);
+    getProgramari(dateString, true);
   }, [dateString, getProgramari]);
 
   useEffect(() => {
@@ -1458,10 +1459,15 @@ function Home({ userApproved = false }) {
         // Dacă selecția anulată este a noastră, curățăm starea locală
         if (data.userId === user?.uid) {
           autoClearingRef.current = true;
-          setDryerDurationHours("");
-          setDryerDurationMinutes("");
-          setSelectedMachine("");
-          toast_warn("Selecția ta pentru uscător a expirat din cauza inactivității.");
+          setSelectedMachine((prev) => {
+            if (isDryerMachine(prev) && data.expired) {
+              toast_warn("Selecția ta pentru uscător a expirat din cauza inactivității.");
+              setDryerDurationHours("");
+              setDryerDurationMinutes("");
+              return "";
+            }
+            return prev;
+          });
           setTimeout(() => { autoClearingRef.current = false; }, 100);
         }
 
@@ -1779,16 +1785,20 @@ function Home({ userApproved = false }) {
   useEffect(() => {
     const timer = setInterval(() => {
       setDryerStatusTick(Date.now());
-      getProgramari();
       if (isDryerMachine(selectedMachine)) {
         fetchLastDryerUser(selectedMachine);
       }
     }, 5000);
 
+    const syncTimer = setInterval(() => {
+      getProgramari(undefined, false);
+    }, 30000);
+
     return () => {
       clearInterval(timer);
+      clearInterval(syncTimer);
     };
-  }, [selectedMachine, fetchLastDryerUser]);
+  }, [selectedMachine, fetchLastDryerUser, getProgramari]);
 
   useEffect(() => {
     if (isDryerSelected) {
@@ -1802,7 +1812,11 @@ function Home({ userApproved = false }) {
     const isDryer = isDryerMachine(machineName);
 
     if (isDryer) {
-      if (!getDryerSelectable(machineName)) {
+      const isEnabled = Boolean(
+        realStates[machineName] ||
+        (machineName === "Uscator 1" && realStates["Uscator"])
+      );
+      if (!isEnabled) {
         toast_warn(`${machineName} nu este disponibil momentan.`);
         return;
       }
