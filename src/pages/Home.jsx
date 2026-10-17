@@ -26,6 +26,7 @@ const BUCURESTI_TZ = "Europe/Bucharest";
 const DRYER_MACHINE = "Uscator";
 const DRYER_MAX_HOURS = 9;
 const DRYER_SELECTION_DEBOUNCE_MS = 300;
+const DEFAULT_MAX_BOOKING_DAYS_AHEAD = 21;
 
 const getMaintenanceUid = (interval = {}) =>
   interval.uid || interval.id || interval.maintenanceId || interval.docId || null;
@@ -84,6 +85,9 @@ function Home({ userApproved = false }) {
   const [maintenanceIntervals, setMaintenanceIntervals] = useState([]);
   const [selectedBookingDetails, setSelectedBookingDetails] = useState(null);
   const [blockPastSlotsEnabled, setBlockPastSlotsEnabled] = useState(false);
+  const [maxBookingDaysAhead, setMaxBookingDaysAhead] = useState(
+    DEFAULT_MAX_BOOKING_DAYS_AHEAD
+  );
   const [dryerDurationHours, setDryerDurationHours] = useState("");
   const [dryerDurationMinutes, setDryerDurationMinutes] = useState("");
   const [dryerSubmitting, setDryerSubmitting] = useState(false);
@@ -412,6 +416,9 @@ function Home({ userApproved = false }) {
           Uscator: Boolean(rasp.data.settings.dryerEnabled),
         });
         setBlockPastSlotsEnabled(Boolean(rasp.data.settings.blockPastSlots));
+        if (Number.isInteger(rasp.data.settings.maxBookingDaysAhead)) {
+          setMaxBookingDaysAhead(rasp.data.settings.maxBookingDaysAhead);
+        }
       } else if (rasp.data.status === 404) {
         setRealStates({
           M1: false,
@@ -544,6 +551,7 @@ function Home({ userApproved = false }) {
         m3Enabled,
         dryerEnabled,
         blockPastSlots,
+        maxBookingDaysAhead: nextMaxBookingDaysAhead,
       } = payload;
 
       if (
@@ -564,6 +572,9 @@ function Home({ userApproved = false }) {
         Uscator: Boolean(dryerEnabled),
       });
       setBlockPastSlotsEnabled(Boolean(blockPastSlots));
+      if (Number.isInteger(nextMaxBookingDaysAhead)) {
+        setMaxBookingDaysAhead(nextMaxBookingDaysAhead);
+      }
     });
 
     // Listener pentru maintenance intervals
@@ -640,13 +651,13 @@ function Home({ userApproved = false }) {
           if (data.programare) {
             setUsersProgramari((prev) => {
               const exists = prev.some((p) => p.uid === data.programare.uid);
-              if (!exists) {
-                return [...prev, data.programare];
-              }
-              if (
+              const isInactive =
                 data.programare.active &&
-                data.programare.active.status === false
-              ) {
+                data.programare.active.status === false;
+              if (!exists) {
+                return isInactive ? prev : [...prev, data.programare];
+              }
+              if (isInactive) {
                 return prev.filter((p) => p.uid !== data.programare.uid);
               }
               return prev.map((p) =>
@@ -1729,6 +1740,17 @@ function Home({ userApproved = false }) {
     }
   };
 
+  // Dacă adminul reduce numărul de zile, mutăm data selectată înapoi în interval
+  useEffect(() => {
+    if (user?.role === "admin" || selectedMachine !== "") return;
+    const lastBookableDay = dayjs()
+      .add(maxBookingDaysAhead, "day")
+      .format("YYYY-MM-DD");
+    if (dayjs(value).format("YYYY-MM-DD") > lastBookableDay) {
+      setValue(dayjs().toDate());
+    }
+  }, [maxBookingDaysAhead, user?.role, selectedMachine, value]);
+
   const submitWashingMachineBooking = async () => {
     if (!isUserApproved) {
       toast_error(
@@ -1778,7 +1800,9 @@ function Home({ userApproved = false }) {
         toast_error(rasp.data.message || "Eroare la salvarea programării!");
       }
     } catch (error) {
-      toast_error("Eroare la salvarea programării!");
+      toast_error(
+        error?.response?.data?.message || "Eroare la salvarea programării!"
+      );
     }
   };
 
@@ -2296,7 +2320,10 @@ function Home({ userApproved = false }) {
                       ? todayBucharest.endOf("day").toDate()
                       : user?.role === "admin"
                         ? undefined
-                        : dayjs().add(3, "weeks").toDate()
+                        : dayjs()
+                          .add(maxBookingDaysAhead, "day")
+                          .endOf("day")
+                          .toDate()
                   }
                 />
 

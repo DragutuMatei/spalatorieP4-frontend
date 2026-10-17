@@ -190,7 +190,9 @@ function Admin() {
     m2Enabled: true,
     m3Enabled: true,
     blockPastSlots: false,
+    maxBookingDaysAhead: 21,
   });
+  const [maxDaysInput, setMaxDaysInput] = useState("21");
   const [users, setUsers] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [maintenanceIntervals, setMaintenanceIntervals] = useState([]);
@@ -227,6 +229,12 @@ function Admin() {
   const [lastSelectedId, setLastSelectedId] = useState(null);
   const [bulkActionReason, setBulkActionReason] = useState("");
   const [expandedBookingId, setExpandedBookingId] = useState(null);
+
+  useEffect(() => {
+    if (Number.isInteger(settings.maxBookingDaysAhead)) {
+      setMaxDaysInput(String(settings.maxBookingDaysAhead));
+    }
+  }, [settings.maxBookingDaysAhead]);
 
   // Deselect on Escape key
   useEffect(() => {
@@ -754,6 +762,73 @@ function Admin() {
         ...prev,
         [key]: key === "blockPastSlots" ? Boolean(previousValue) : previousValue,
       }));
+    } finally {
+      setSavingSetting(null);
+    }
+  };
+
+  const saveMaxBookingDaysAhead = async () => {
+    const key = "maxBookingDaysAhead";
+    if (savingSetting === key) {
+      return;
+    }
+
+    const nextValue = Number(maxDaysInput);
+    if (!Number.isInteger(nextValue) || nextValue < 0 || nextValue > 365) {
+      toast_error("Introdu un număr întreg de zile între 0 și 365.");
+      return;
+    }
+
+    const currentValue = settings.maxBookingDaysAhead;
+    if (nextValue === currentValue) {
+      return;
+    }
+
+    if (
+      nextValue < currentValue &&
+      !window.confirm(
+        `Programările utilizatorilor de după ${dayjs()
+          .add(nextValue, "day")
+          .format("DD/MM/YYYY")} vor fi anulate, iar utilizatorii vor fi anunțați. Continui?`
+      )
+    ) {
+      return;
+    }
+
+    setSavingSetting(key);
+    try {
+      const rasp = await AXIOS.post("/api/settings", { key, value: nextValue });
+      if (rasp.data.success) {
+        setSettings((prev) => ({
+          ...prev,
+          ...rasp.data.settings,
+          blockPastSlots: Boolean(rasp.data.settings.blockPastSlots),
+        }));
+        const cancelled = rasp.data.cancelledBookings || 0;
+        const cancelledText =
+          cancelled === 1
+            ? " O programare a fost anulată."
+            : cancelled > 1
+              ? ` ${cancelled} programări au fost anulate.`
+              : "";
+        toast_success(
+          `Utilizatorii se pot programa acum până pe ${dayjs()
+            .add(nextValue, "day")
+            .format("DD/MM/YYYY")}.${cancelledText}`
+        );
+        if (rasp.data.cancelError) {
+          toast_error("Unele programări nu au putut fi anulate automat.");
+        }
+        if (cancelled > 0) {
+          await getBookings();
+        }
+      }
+    } catch (error) {
+      console.error("Settings error:", error);
+      toast_error(
+        error?.response?.data?.message || "Eroare la salvarea setărilor!"
+      );
+      setMaxDaysInput(String(currentValue));
     } finally {
       setSavingSetting(null);
     }
@@ -1411,6 +1486,53 @@ function Admin() {
                     saveSettings("blockPastSlots", !settings.blockPastSlots)
                   }
                 />
+              </div>
+
+              <div className="admin__settings-item admin__settings-item--stack">
+                <div className="label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
+                  </svg>
+                  Zile maxime de programare în avans
+                  <span className="status">
+                    până pe{" "}
+                    {dayjs()
+                      .add(settings.maxBookingDaysAhead ?? 21, "day")
+                      .format("DD/MM/YYYY")}
+                  </span>
+                </div>
+                <form
+                  className="days-control"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    saveMaxBookingDaysAhead();
+                  }}
+                >
+                  <input
+                    type="number"
+                    min="0"
+                    max="365"
+                    step="1"
+                    value={maxDaysInput}
+                    onChange={(e) => setMaxDaysInput(e.target.value)}
+                    aria-label="Zile maxime de programare în avans"
+                  />
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={
+                      savingSetting === "maxBookingDaysAhead" ||
+                      Number(maxDaysInput) === settings.maxBookingDaysAhead
+                    }
+                  >
+                    {savingSetting === "maxBookingDaysAhead"
+                      ? "Se salvează..."
+                      : "Salvează"}
+                  </button>
+                </form>
               </div>
             </div>
           </div>
