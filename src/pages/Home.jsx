@@ -100,21 +100,39 @@ function Home({ userApproved = false }) {
   const [lastDryerUser, setLastDryerUser] = useState(null);
   const autoClearingRef = useRef(false);
 
+  const fetchLastDryerUser = useCallback(() => {
+    AXIOS.get("/api/programare/uscator/last")
+      .then((res) => {
+        if (res.data.success && res.data.booking) {
+          setLastDryerUser(res.data.booking.user);
+        } else {
+          setLastDryerUser(null);
+        }
+      })
+      .catch((err) => console.error("Error fetching last dryer user:", err));
+  }, []);
+
   useEffect(() => {
     if (selectedMachine === "Uscator") {
-      AXIOS.get("/api/programare/uscator/last")
-        .then((res) => {
-          if (res.data.success && res.data.booking) {
-            setLastDryerUser(res.data.booking.user);
-          } else {
-            setLastDryerUser(null);
-          }
-        })
-        .catch((err) => console.error("Error fetching last dryer user:", err));
+      fetchLastDryerUser();
     } else {
       setLastDryerUser(null);
     }
-  }, [selectedMachine]);
+  }, [selectedMachine, fetchLastDryerUser]);
+
+  // Actualizăm ultimul utilizator al uscătorului când se schimbă o rezervare de uscător
+  useEffect(() => {
+    if (!socket || selectedMachine !== "Uscator") return;
+    const handleDryerChange = (data) => {
+      // La "create", backend-ul trimite tot răspunsul: { success, programare }
+      const programare = data?.programare?.programare ?? data?.programare;
+      if (programare?.machine === "Uscator" || data?.action === "delete") {
+        fetchLastDryerUser();
+      }
+    };
+    socket.on("programare", handleDryerChange);
+    return () => socket.off("programare", handleDryerChange);
+  }, [socket, user, selectedMachine, fetchLastDryerUser]);
 
   useEffect(() => {
     setIsUserApproved(Boolean(userApproved));
